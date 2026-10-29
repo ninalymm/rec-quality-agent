@@ -15,7 +15,7 @@
 | BUG-004 | 缺 key 被报成「失败」而非「跳过」 | 中 | 用户跑 `--live -n 3` | 已修 |
 | BUG-005 | 多行错误被截断成半句话 | 低 | 同上 | 已修 |
 | BUG-006 | 统计漏计，显示 `26/28` | 高 | 用户跑 `--live` | 已修 |
-| BUG-007 | git 身份缺失导致 commit 失败 | 中 | commit 时报错 | 部分修 |
+| BUG-007 | git 身份缺失导致 commit 失败 | 中 | commit 时报错 | 已修 |
 | BUG-008 | `.DS_Store` 未被忽略 | 低 | `git status` | 已修 |
 
 ---
@@ -147,14 +147,21 @@ fatal: unable to auto-detect email address (got 'ninalym@MacBookPro.(none)')
 
 **根因**：从未配置全局 `user.name` / `user.email`；此前的提交是 git 用主机名自动猜的（`ninalym@Ninas-MacBook-Pro.local`）。后来主机名解析变成 `MacBookPro` 且无域，猜测出的邮箱不合法，git 直接拒绝。
 
-**修复（部分）**：在本仓库设置局部身份 `Nina <ninalym13@gmail.com>`。
-
-**待办**：设置全局身份，否则其他项目会重复遇到：
+**修复**：两级都配了。
 
 ```bash
+# 仓库级（先做，解当时之急）
+git config user.name "Nina"
+git config user.email "ninalym13@gmail.com"
+
+# 全局级（根治，覆盖其他项目）
 git config --global user.name "Nina"
 git config --global user.email "ninalym13@gmail.com"
 ```
+
+**验证**：`git config --list --show-origin | grep user` 显示来自 `~/.gitconfig`；再在工作区外的空目录做一次 `git commit --allow-empty`，作者为 `Nina <ninalym13@gmail.com>`，确认全局配置真的生效（而不是只在某个仓库里对）。
+
+**注意**：改身份只影响**之后的**提交，历史 commit 的作者不变——本项目早期几个提交仍是 `ninalym@Ninas-MacBook-Pro.local`。要改历史得 `git filter-branch` / `git rebase -i` 重写，公开仓库上还会引发强推，没必要。
 
 **教训**：依赖 git 的「自动推断身份」是隐性依赖——它默认能工作，直到主机名或解析环境变了才暴露。
 
