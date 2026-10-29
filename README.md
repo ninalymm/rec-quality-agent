@@ -47,6 +47,8 @@ cp .env.example .env      # 填一个 key（DeepSeek 或 Qwen），.env 已被 .
 .venv/bin/python -m pytest                    # 离线单测，不需要 key
 .venv/bin/python -m scripts.smoke_recs --dry-run   # 只检查配置和 prompt
 .venv/bin/python -m scripts.smoke_recs             # 真实调用：生成 5 条推荐
+.venv/bin/python -m scripts.check_m0                # M0 验收：21 项结构检查
+.venv/bin/python -m scripts.check_m0 --live -n 3    # 额外评估输出质量与稳定性
 ```
 
 成功输出末行是 `条数：5（期望 5）` 与成本估算；退出码 0=成功、1=条数不对/连接失败、2=key 缺失或无效。
