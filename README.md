@@ -56,7 +56,8 @@ cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .giti
 没有 API key 也能验证链路：
 
 ```bash
-ollama serve & && ollama pull qwen2.5:7b
+ollama serve                # 另开一个终端跑；或后台 ollama serve &
+ollama pull qwen2.5:7b
 .venv/bin/python -m scripts.smoke_recs --provider ollama
 ```
 
