@@ -59,6 +59,10 @@ ollama pull qwen2.5:7b
 .venv/bin/python -m scripts.smoke_recs --provider ollama
 ```
 
+## 遇到问题
+
+环境、网络、解释器相关的坑和验证过的解法，见 [docs/troubleshooting.md](docs/troubleshooting.md)。
+
 ## 开发约定
 
 - 所有配置集中在 `app/config.py`，其他模块不要直接读环境变量
