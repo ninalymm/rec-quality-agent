@@ -22,6 +22,9 @@ results = []   # (是否通过, 分节, 描述, 详情)
 
 
 def check(ok, section, desc, detail=""):
+    # 归一成布尔：像 `cond and recs` 这种表达式会返回列表而不是 True，
+    # 统计用的是 `ok is True`，不归一就会漏计。
+    ok = bool(ok)
     results.append((ok, section, desc, detail))
     print("  %s %s%s" % (OK if ok else BAD, desc, ("  ← " + detail) if detail else ""))
 
