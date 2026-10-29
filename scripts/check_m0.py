@@ -5,7 +5,7 @@
     python -m scripts.check_m0 --live       # 额外做一次真实调用，评估输出质量
     python -m scripts.check_m0 --live -n 3  # 连续调用 3 次，看稳定性
 
-退出码：0 全部通过；1 有失败项。
+退出码：0 全部通过；1 有失败项；2 结构层通过但缺 key，实时检查被跳过。
 """
 import argparse
 import platform
@@ -17,13 +17,19 @@ from app.llm import PROVIDERS, MissingKeyError, resolve
 from app.prompts import build_recs_messages
 from app.recs import _extract_recs, _loads
 
-OK, BAD, WARN = "[✓]", "[✗]", "[!]"
+OK, BAD, WARN, SKIP = "[✓]", "[✗]", "[!]", "[–]"
 results = []   # (是否通过, 分节, 描述, 详情)
 
 
 def check(ok, section, desc, detail=""):
     results.append((ok, section, desc, detail))
     print("  %s %s%s" % (OK if ok else BAD, desc, ("  ← " + detail) if detail else ""))
+
+
+def check_skip(section, desc, detail=""):
+    """缺少前置条件（比如没有 key）：既不算通过也不算失败。"""
+    results.append((None, section, desc, detail))
+    print("  %s %s%s" % (SKIP, desc, ("  ← " + detail) if detail else ""))
 
 
 def head(title):
@@ -116,7 +122,6 @@ def section_tests():
 def evaluate_output(out, count):
     """对一次真实调用的输出做质量评估。"""
     recs = out["recommendations"]
-    head("输出质量（实时调用）")
     check(len(recs) == count, "质量", "条数符合预期", "%d/%d" % (len(recs), count))
 
     fields = ("title", "category", "reason", "freshness")
@@ -170,11 +175,18 @@ DEMO = {
 
 
 def section_live(repeat):
-    from app.recs import generate_recs
-    if not config_prompt_text():
-        return
+    head("输出质量（实时调用）")
     if repeat <= 0:
+        check_skip("质量", "真实调用", "repeat=0，未执行")
         return
+    try:
+        resolve()
+    except MissingKeyError:
+        check_skip("质量", "真实调用", "未配置 key —— 填好 .env 后重跑 --live")
+        print("　　结构层检查不受影响；实时调用需要 DEEPSEEK_API_KEY 或 DASHSCOPE_API_KEY。")
+        return
+
+    from app.recs import generate_recs
     outs = []
     for i in range(repeat):
         try:
@@ -183,7 +195,8 @@ def section_live(repeat):
             print("  第 %d 次调用：%d 条，¥%.6f"
                   % (i + 1, len(out["recommendations"]), out["cost_cny"]))
         except Exception as exc:
-            print("  第 %d 次调用失败：%s" % (i + 1, str(exc)[:80]))
+            msg = " ".join(str(exc).split())   # 多行错误压成一行
+            print("  第 %d 次调用失败：%s" % (i + 1, msg[:120]))
     if not outs:
         check(False, "质量", "真实调用成功", "全部失败")
         return
@@ -206,22 +219,27 @@ def main(argv=None):
 
     head("汇总")
     total = len(results)
-    passed = sum(1 for ok, *_ in results if ok)
+    passed = sum(1 for ok, *_ in results if ok is True)
+    failed = sum(1 for ok, *_ in results if ok is False)
+    skipped = sum(1 for ok, *_ in results if ok is None)
     for section in ("环境", "配置", "仓库", "测试", "质量"):
         items = [r for r in results if r[1] == section]
         if not items:
             continue
-        bad = [r for r in items if not r[0]]
-        print("  %-6s %d 项，失败 %d" % (section, len(items), len(bad)))
-    print("\n通过 %d/%d" % (passed, total))
+        bad = [r for r in items if r[0] is False]
+        skip = [r for r in items if r[0] is None]
+        extra = ("，跳过 %d" % len(skip)) if skip else ""
+        print("  %-6s %d 项，失败 %d%s" % (section, len(items), len(bad), extra))
+    print("\n通过 %d/%d（失败 %d，跳过 %d）" % (passed, total - skipped, failed, skipped))
 
-    if not args.live:
-        print("\n结构层检查完成。输出质量需要 key，加 --live 再跑一次。")
-    if passed == total:
-        print("M0 结论：PASS")
-        return 0
-    print("M0 结论：有 %d 项未通过" % (total - passed))
-    return 1
+    if failed:
+        print("M0 结论：有 %d 项未通过" % failed)
+        return 1
+    if skipped:
+        print("M0 结论：结构层 PASS，输出质量待验证 —— 补 .env 后重跑 --live")
+        return 2
+    print("M0 结论：PASS")
+    return 0
 
 
 if __name__ == "__main__":
