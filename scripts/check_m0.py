@@ -114,6 +114,29 @@ def section_repo():
     check(ahead == "0", "仓库", "本地与远端同步", "领先 %s 个 commit" % ahead if ahead else "")
 
 
+def section_docs():
+    """文档检查：README 里的 shell 命令必须能通过语法解析（不执行）。"""
+    head("文档")
+    readme = config.ROOT / "README.md"
+    check(readme.exists(), "文档", "README 存在",
+          "%d 行" % len(readme.read_text(encoding="utf-8").splitlines()) if readme.exists() else "")
+    if not readme.exists():
+        return
+
+    import re
+    text = readme.read_text(encoding="utf-8")
+    blocks = re.findall(r"```bash\n(.*?)```", text, re.S)
+    check(bool(blocks), "文档", "README 含 bash 示例", "%d 段" % len(blocks))
+
+    bad = []
+    for i, block in enumerate(blocks, 1):
+        proc = subprocess.run(["bash", "-n"], input=block,
+                              capture_output=True, text=True)
+        if proc.returncode != 0:
+            bad.append("第 %d 段: %s" % (i, proc.stderr.strip()[:70]))
+    check(not bad, "文档", "README 命令语法合法", "；".join(bad))
+
+
 def section_tests():
     head("测试")
     proc = subprocess.run([sys.executable, "-m", "pytest", "-q"],
@@ -216,6 +239,7 @@ def main(argv=None):
     section_env()
     section_config()
     section_repo()
+    section_docs()
     section_tests()
     if args.live:
         section_live(args.repeat)
@@ -225,7 +249,7 @@ def main(argv=None):
     passed = sum(1 for ok, *_ in results if ok is True)
     failed = sum(1 for ok, *_ in results if ok is False)
     skipped = sum(1 for ok, *_ in results if ok is None)
-    for section in ("环境", "配置", "仓库", "测试", "质量"):
+    for section in ("环境", "配置", "仓库", "文档", "测试", "质量"):
         items = [r for r in results if r[1] == section]
         if not items:
             continue

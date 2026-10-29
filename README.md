@@ -20,7 +20,7 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 | 指标 | 实测值 | 怎么来的 |
 |---|---|---|
-| 验收检查 | **28/28 通过** | `python -m scripts.check_m0 --live` |
+| 验收检查 | **31/31 通过** | `python -m scripts.check_m0 --live` |
 | 离线单测 | **22 passed** | 不联网、不需要 key，CI 可跑 |
 | 单次调用成本 | **¥0.0028** | prompt 200 + completion 303 tokens |
 | 推荐条数 | 5/5，字段齐全 | 结构合规检查 |
@@ -50,7 +50,7 @@ cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .giti
 .venv/bin/python -m pytest                          # 22 个离线单测（不需要 key）
 .venv/bin/python -m scripts.smoke_recs --dry-run    # 只检查配置与 prompt，不花钱
 .venv/bin/python -m scripts.smoke_recs              # 真实调用：生成 5 条推荐
-.venv/bin/python -m scripts.check_m0 --live         # 完整验收（28 项）
+.venv/bin/python -m scripts.check_m0 --live         # 完整验收（31 项）
 ```
 
 没有 API key 也能验证链路：
@@ -111,7 +111,7 @@ M2 完成后填入。计划记录三个数字：
 
 ```bash
 .venv/bin/python -m pytest            # 22 个离线单测
-.venv/bin/python -m scripts.check_m0  # 结构层验收（21 项，不花钱）
+.venv/bin/python -m scripts.check_m0  # 结构层验收（24 项，不花钱）
 ```
 
 约定：
@@ -119,6 +119,7 @@ M2 完成后填入。计划记录三个数字：
 - 配置只进 `app/config.py`，prompt 只进 `app/prompts.py`
 - 单测必须离线可跑（不联网、不需要 key），否则 CI 不稳定
 - commit 前缀：`feat(scope):` / `fix(scope):` / `docs(scope):` / `test(scope):`
+- **发现问题必须存档**：代码/文档缺陷进 [docs/bugs.md](docs/bugs.md)，环境/网络/工具链进 [troubleshooting.md](docs/troubleshooting.md)。五要素（现象/发现/根因/修复/防复发）缺一不可，且与修复放在同一个 commit 里。规则详见 [docs/README.md](docs/README.md)
 
 踩坑记录（都是真实踩过的，附诊断命令）：
 
@@ -144,11 +145,11 @@ rec-quality-agent/
 │   └── tools/                M3：metrics.py / sql_query.py
 ├── scripts/
 │   ├── smoke_recs.py         最小链路验证：生成 5 条推荐
-│   └── check_m0.py           M0 验收：28 项检查
+│   └── check_m0.py           M0 验收：31 项检查
 ├── tests/                    离线单测（22 个）
 ├── data/                     queries.csv / labels.csv（M1/M2 填充）
 ├── eval/                     rubric.md / judge.py / agreement.py / REPORT.md
-├── docs/                     troubleshooting.md / bugs.md
+├── docs/                     README（索引与规则）/ troubleshooting.md / bugs.md
 ├── .github/workflows/        M5：CI 回归门禁
 ├── pytest.ini                测试路径与导入路径
 └── requirements.txt

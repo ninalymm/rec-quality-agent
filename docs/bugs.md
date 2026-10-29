@@ -17,6 +17,7 @@
 | BUG-006 | 统计漏计，显示 `26/28` | 高 | 用户跑 `--live` | 已修 |
 | BUG-007 | git 身份缺失导致 commit 失败 | 中 | commit 时报错 | 已修 |
 | BUG-008 | `.DS_Store` 未被忽略 | 低 | `git status` | 已修 |
+| BUG-009 | README 里的 shell 命令语法错误 | 中 | 复查文档 | 已修 |
 
 ---
 
@@ -195,3 +196,32 @@ git config --global user.email "ninalym13@gmail.com"
 - [ ] 传给统计函数的到底是不是布尔值？
 - [ ] 用户可见的错误文本是否完整、是否指对了地方？
 - [ ] 每个修掉的 bug 是否有对应的回归测试？
+
+---
+
+## BUG-009 README 里的 shell 命令语法错误
+
+**现象**：
+
+```bash
+ollama serve & && ollama pull qwen2.5:7b
+# bash: syntax error near unexpected token `&&'
+```
+
+读者按 README 复制执行，第一条命令就报错。
+
+**发现**：写完 README 五分钟后自查发现（不是读者反馈）。
+
+**根因**：把两个意图混在一行——「后台运行 `ollama serve`」和「顺序执行 `ollama pull`」。`&` 本身已经结束了一条命令，后面不能再接 `&&`。
+
+**修复**：拆成两行并加注释：
+
+```bash
+ollama serve                # 另开一个终端跑；或后台 ollama serve &
+ollama pull qwen2.5:7b
+.venv/bin/python -m scripts.smoke_recs --provider ollama
+```
+
+**防复发**：`check_m0` 新增 `section_docs()`，把 README 里所有 ```bash 代码块抽出来，用 `bash -n` 做**语法解析**（只解析、不执行，安全）。命令写错的 README 现在会让验收直接失败。
+
+**教训**：README 里的命令是最先被读者执行的部分，也是唯一不会被测代码覆盖的部分。写文档时的「顺手一改」特别容易留下语法错误，必须机器校验——人眼看得再仔细也扫不出来。
