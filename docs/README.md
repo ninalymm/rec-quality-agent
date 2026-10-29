@@ -4,6 +4,7 @@
 |---|---|---|
 | [troubleshooting.md](troubleshooting.md) | 环境、网络、工具链的坑 | 每次都可能是新的，配一次就好 |
 | [bugs.md](bugs.md) | 自己写的代码 / 文档的缺陷 | 修复的同一个 commit 里 |
+| [rubric-review.md](rubric-review.md) | 评分标准的设计缺陷与评审记录 | 每次改 rubric 时追加 |
 
 ## 规则：发现问题必须存档
 
@@ -18,6 +19,7 @@
 
 - **代码 / 文档缺陷** → `bugs.md`（编号 `BUG-0xx`）
 - **环境 / 网络 / 工具链** → `troubleshooting.md`（按主题分节）
+- **评分标准 / 评测设计问题** → `rubric-review.md`（按 A–E 分类）
 
 **必须包含五要素**：现象（贴原始报错）、发现方式、根因、修复、防复发。
 少任何一项都算没写完——特别是「防复发」，没有它下次还会踩。
