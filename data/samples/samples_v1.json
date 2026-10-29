@@ -1,0 +1,202 @@
+[
+  {
+    "qid": "S001",
+    "group": "优：4 命中 + 1 探索 + 3 类型",
+    "user_profile": "30 岁，上海，后端工程师，养猫，每周跑三次步。",
+    "history": "1)《Go 内存模型详解》(技术)  2)《K8s 调度器原理》(技术)  3)《跑步膝伤怎么恢复》(健康运动)  4)《马拉松备赛 12 周计划》(健康运动)",
+    "interest_categories": "技术;健康运动",
+    "request": "推荐 5 条今天能看的，可以有一两条新方向。",
+    "recommendations": [
+      {
+        "title": "Go 1.24 调度器有哪些变化",
+        "category": "技术",
+        "published_at": "2026-10-27",
+        "reason": "你 10 月看过《Go 内存模型详解》，这篇讲调度器，和内存可见性是同一个问题的两面。"
+      },
+      {
+        "title": "K8s 网络模型拆解：从 CNI 到 Service",
+        "category": "技术",
+        "published_at": "2026-10-22",
+        "reason": "接着你看过的《K8s 调度器原理》，这篇补上同一体系里的网络层。"
+      },
+      {
+        "title": "跑步时心率区间怎么定",
+        "category": "健康运动",
+        "published_at": "2026-10-26",
+        "reason": "你在按《马拉松备赛 12 周计划》练，这篇讲心率区间，是计划里最容易执行错的一环。"
+      },
+      {
+        "title": "膝伤恢复期的四个力量训练",
+        "category": "健康运动",
+        "published_at": "2026-10-19",
+        "reason": "延续你看的《跑步膝伤怎么恢复》，这篇给的是具体动作，可直接照着练。"
+      },
+      {
+        "title": "技术人转管理前该想清楚的五件事",
+        "category": "职场",
+        "published_at": "2026-10-24",
+        "reason": "你关注的 Go 和 K8s 都在工程方向，这篇是职场方向的新尝试。"
+      }
+    ]
+  },
+  {
+    "qid": "S002",
+    "group": "同质化：5 条单一类型",
+    "user_profile": "28 岁，杭州，产品经理，正在带一个 AI 工具类产品。",
+    "history": "1)《AI 产品经理生存指南》(职场)  2)《需求评审怎么一次过》(职场)  3)《从 0 到 1 做增长》(职场)",
+    "interest_categories": "职场",
+    "request": "推荐 5 条今天能看的。",
+    "recommendations": [
+      {
+        "title": "AI 产品经理的三种能力模型",
+        "category": "职场",
+        "published_at": "2026-10-28",
+        "reason": "你在看《AI 产品经理生存指南》，这篇把能力要求拆得更细，可以直接对照自查。"
+      },
+      {
+        "title": "需求评审的五个常见坑",
+        "category": "职场",
+        "published_at": "2026-10-21",
+        "reason": "延续你看的《需求评审怎么一次过》，这篇是反面案例集。"
+      },
+      {
+        "title": "增长实验怎么设计才有结论",
+        "category": "职场",
+        "published_at": "2026-10-15",
+        "reason": "你读过《从 0 到 1 做增长》，这篇讲实验设计，是同主题的下一层。"
+      },
+      {
+        "title": "和研发吵起来之后怎么办",
+        "category": "职场",
+        "published_at": "2026-10-23",
+        "reason": "你读过《从 0 到 1 做增长》，这篇讲增长实验失败后怎么和研发对齐，是执行层的补充。"
+      },
+      {
+        "title": "产品经理的季度复盘模板",
+        "category": "职场",
+        "published_at": "2026-10-18",
+        "reason": "延续你在看的《AI 产品经理生存指南》，这篇给的是可以直接套用的复盘模板。"
+      }
+    ]
+  },
+  {
+    "qid": "S003",
+    "group": "空泛理由 + 时效偏旧",
+    "user_profile": "20 岁，武汉，大二计算机专业，喜欢在 B 站看学习视频。",
+    "history": "1)《数据结构该怎么学》(教育)  2)《考研还是就业》(教育)  3)《B 站学习区 up 主推荐》(娱乐)",
+    "interest_categories": "教育;娱乐",
+    "request": "推荐 5 条今天能看的。",
+    "recommendations": [
+      {
+        "title": "数据结构入门路线图",
+        "category": "教育",
+        "published_at": "2026-09-14",
+        "reason": "根据您的历史行为为您推荐。"
+      },
+      {
+        "title": "考研 vs 就业：三年后的差别",
+        "category": "教育",
+        "published_at": "2026-09-10",
+        "reason": "猜你喜欢。"
+      },
+      {
+        "title": "学习区 up 主年度盘点",
+        "category": "娱乐",
+        "published_at": "2026-09-20",
+        "reason": "根据您的兴趣推荐。"
+      },
+      {
+        "title": "计算机专业该考哪些证",
+        "category": "教育",
+        "published_at": "2026-09-05",
+        "reason": "为您推荐。"
+      },
+      {
+        "title": "大学生如何安排一天",
+        "category": "娱乐",
+        "published_at": "2026-09-25",
+        "reason": "根据您的浏览记录推荐。"
+      }
+    ]
+  },
+  {
+    "qid": "S004",
+    "group": "缺数据：published_at 缺失",
+    "user_profile": "62 岁，苏州，退休教师，每天晨练。",
+    "history": "1)《八段锦入门》(健康运动)  2)《低盐饮食怎么吃》(生活方式)  3)《膝关节保养》(健康运动)",
+    "interest_categories": "健康运动;生活方式",
+    "request": "推荐 5 条今天能看的。",
+    "recommendations": [
+      {
+        "title": "八段锦的呼吸配合要点",
+        "category": "健康运动",
+        "published_at": null,
+        "reason": "你在练《八段锦入门》，这篇讲呼吸，是动作之外的另一半。"
+      },
+      {
+        "title": "低盐饮食的十个替换技巧",
+        "category": "生活方式",
+        "published_at": null,
+        "reason": "延续你看的《低盐饮食怎么吃》，这篇给的是具体替换方案。"
+      },
+      {
+        "title": "膝关节保养的三个误区",
+        "category": "健康运动",
+        "published_at": null,
+        "reason": "你关注过《膝关节保养》，这篇纠正了常见做法。"
+      },
+      {
+        "title": "适合老年人的居家拉伸",
+        "category": "健康运动",
+        "published_at": null,
+        "reason": "和你的晨练习惯一致。"
+      },
+      {
+        "title": "退休后如何安排社交生活",
+        "category": "生活方式",
+        "published_at": null,
+        "reason": "生活方式方向，可能对你有帮助。"
+      }
+    ]
+  },
+  {
+    "qid": "S005",
+    "group": "跑题：命中不足 + 理由空泛",
+    "user_profile": "32 岁，两个孩子的妈妈，全职带娃，最近在学记账。",
+    "history": "1)《幼小衔接要准备什么》(教育)  2)《家庭记账法》(理财)  3)《辅食添加顺序》(生活方式)",
+    "interest_categories": "教育;理财;生活方式",
+    "request": "推荐 5 条今天能看的。",
+    "recommendations": [
+      {
+        "title": "幼小衔接的五个能力准备",
+        "category": "教育",
+        "published_at": "2026-10-20",
+        "reason": "你在看《幼小衔接要准备什么》，这篇把能力拆得更细。"
+      },
+      {
+        "title": "一年级新生家长会怎么开",
+        "category": "教育",
+        "published_at": "2026-10-18",
+        "reason": "和孩子的入学准备相关。"
+      },
+      {
+        "title": "本周热播剧推荐",
+        "category": "娱乐",
+        "published_at": "2026-10-12",
+        "reason": "根据您的兴趣推荐。"
+      },
+      {
+        "title": "适合全家的周末去处",
+        "category": "娱乐",
+        "published_at": "2026-10-25",
+        "reason": "猜你喜欢。"
+      },
+      {
+        "title": "记账三个月后的复盘",
+        "category": "理财",
+        "published_at": "2026-10-08",
+        "reason": "理财方向的内容，可能适合你。"
+      }
+    ]
+  }
+]
