@@ -1,0 +1,8 @@
+# M5：回归门禁。成功率低于基线 5% 则 exit 1（红→绿截图是面试材料）。
+# on: [push, pull_request]
+# jobs:
+#   regression:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - run: python eval/regression.py --baseline 0.62 --threshold 0.05

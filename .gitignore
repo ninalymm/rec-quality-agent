@@ -8,3 +8,5 @@ venv/
 *.sqlite3
 dist/
 build/
+.pytest_cache/
+.idea/
