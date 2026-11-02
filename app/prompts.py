@@ -42,6 +42,11 @@ RECS_USER = """用户画像：
 
 def build_recs_messages(user_profile, history, request, candidates_text, count=5, min_types=3):
     """拼出 chat completion 的 messages。纯函数，方便单测。"""
+    if not (history or "").strip():
+        # 无历史时若不加约束，模型会编造「你看过…」来满足第 3 条要求
+        history = ("（该用户没有任何历史行为）\n"
+                   "注意：理由中禁止出现「你看过」「你读过」「你关注过」这类表述，"
+                   "只能基于用户画像和本次请求来说明为什么推荐。")
     return [
         {"role": "system", "content": RECS_SYSTEM.format(count=count)},
         {
