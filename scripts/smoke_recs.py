@@ -48,7 +48,10 @@ def dry_run(provider, model, count):
     print("[dry-run] key env  = %s -> %s" % (cfg["key_env"], shown))
     if not key:
         print("\n⚠ 没有 key，真实调用会失败。填好 .env 后去掉 --dry-run 再跑。")
-    messages = build_recs_messages(**DEMO, count=count)
+    from app import candidates as _cand
+    _pool = _cand.load_pool()
+    _eval = _cand.today()
+    messages = build_recs_messages(**DEMO, candidates_text=_cand.render_for_prompt(_pool, _eval), count=count)
     print("\n[dry-run] prompt 共 %d 条消息，%d 字符" % (
         len(messages), sum(len(m["content"]) for m in messages)
     ))
@@ -92,10 +95,10 @@ def main(argv=None):
     print("provider=%s model=%s" % (out["provider"], out["model"]))
     print("=" * 70)
     for i, rec in enumerate(recs, 1):
-        print("%d. %s  [%s / %s]" % (
-            i, rec.get("title", "(无标题)"),
-            rec.get("category", "?"), rec.get("freshness", "?"),
+        print("%d. %s  [%s]" % (
+            i, rec.get("title", "(无标题)"), rec.get("category", "?"),
         ))
+        print("   发布：%s" % rec.get("published_at", "?"))
         print("   理由：%s" % rec.get("reason", "(无)"))
     print("=" * 70)
     print("条数：%d（期望 %d）" % (len(recs), args.count))

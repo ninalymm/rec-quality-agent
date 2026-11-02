@@ -41,11 +41,19 @@ class TestExtract:
 
 class TestMessages:
     def test_contains_profile_and_history(self):
-        msgs = build_recs_messages("28 岁后端", "看过 Go", "推荐 5 条", count=5)
+        msgs = build_recs_messages("28 岁后端", "看过 Go", "推荐 5 条", "C001 | 技术 | 2026-10-01 | x", count=5)
         assert msgs[0]["role"] == "system"
         assert "28 岁后端" in msgs[1]["content"]
         assert "看过 Go" in msgs[1]["content"]
 
+    def test_candidates_go_into_prompt(self):
+        msgs = build_recs_messages("p", "h", "r", "C077 | 教育 | 2026-09-01 | 唯一候选", count=5)
+        assert "C077" in msgs[1]["content"]
+
     def test_count_goes_into_system_prompt(self):
-        msgs = build_recs_messages("p", "h", "r", count=3)
+        msgs = build_recs_messages("p", "h", "r", "C001", count=3)
         assert "3" in msgs[0]["content"]
+
+    def test_reason_rule_is_explicit(self):
+        msgs = build_recs_messages("p", "h", "r", "C001", count=5)
+        assert "具体标题" in msgs[1]["content"]

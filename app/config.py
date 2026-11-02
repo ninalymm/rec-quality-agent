@@ -22,3 +22,4 @@ MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1500"))
 
 # --- 业务约束 ---
 RECS_COUNT = 5  # 一次生成几条推荐（M0 的验收标准就是 5）
+MIN_TYPES = int(os.getenv("MIN_TYPES", "3"))  # 多样性维度 2 分所需的类目数

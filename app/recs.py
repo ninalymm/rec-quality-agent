@@ -1,13 +1,15 @@
-"""业务层：一次 LLM 调用生成 N 条推荐。
+"""业务层：一次 LLM 调用，从候选池里选 N 条推荐。
 
-M0 的最小闭环，也是 M3 里 generate_recs 工具的雏形。
+M0 的闭环，也是 M3 里 generate_recs 工具的雏形。
+
+v2（2026-11-02）：模型只输出 {id, reason}，其余字段由 app.candidates 从池子填入。
 """
 import json
 import re
 
 from openai import BadRequestError
 
-from app import config
+from app import candidates, config
 from app.llm import client_for, cost_cny
 from app.prompts import build_recs_messages
 
@@ -42,14 +44,21 @@ def _extract_recs(data):
 
 def generate_recs(
     user_profile, history, request, provider=None, model=None,
-    temperature=None, count=None,
+    temperature=None, count=None, eval_date=None, pool=None,
 ):
-    """一次 LLM 调用 → 推荐列表 + token 用量 + 成本。"""
+    """一次 LLM 调用 → N 条推荐（已补全字段）+ token 用量 + 成本。"""
     count = count or config.RECS_COUNT
+    eval_date = eval_date or candidates.today()
+    pool = pool if pool is not None else candidates.load_pool()
+
     client, cfg = client_for(provider, model)
     kwargs = dict(
         model=cfg["model"],
-        messages=build_recs_messages(user_profile, history, request, count),
+        messages=build_recs_messages(
+            user_profile, history, request,
+            candidates.render_for_prompt(pool, eval_date),
+            count=count, min_types=config.MIN_TYPES,
+        ),
         temperature=config.TEMPERATURE if temperature is None else temperature,
         max_tokens=config.MAX_TOKENS,
     )
@@ -58,15 +67,17 @@ def generate_recs(
             response_format={"type": "json_object"}, **kwargs
         )
     except BadRequestError:
-        # 有些本地/兼容端点不支持 response_format，退回普通模式，靠 _loads 兜住 JSON
+        # 有些本地/兼容端点不支持 response_format，退回普通模式
         resp = client.chat.completions.create(**kwargs)
 
     raw = resp.choices[0].message.content or ""
     usage = resp.usage
+    picked = _extract_recs(_loads(raw))
     return {
-        "recommendations": _extract_recs(_loads(raw)),
+        "recommendations": candidates.enrich(picked, pool, eval_date),
         "provider": cfg["provider"],
         "model": cfg["model"],
+        "eval_date": eval_date.isoformat(),
         "tokens": {
             "prompt": getattr(usage, "prompt_tokens", 0) or 0,
             "completion": getattr(usage, "completion_tokens", 0) or 0,

@@ -81,7 +81,9 @@ def section_config():
         got = "has-key"
     check(got in ("missing-key", "has-key"), "配置", "缺 key 时行为可控", got)
 
-    msgs = build_recs_messages("p", "h", "r", count=5)
+    from app import candidates as _cand
+    _pool = _cand.load_pool()
+    msgs = build_recs_messages("p", "h", "r", _cand.render_for_prompt(_pool, _cand.today()), count=5)
     check(len(msgs) == 2 and "5" in msgs[0]["content"], "配置",
           "prompt 构造含条数约束", "%d 条消息" % len(msgs))
 
@@ -150,14 +152,28 @@ def evaluate_output(out, count):
     recs = out["recommendations"]
     check(len(recs) == count, "质量", "条数符合预期", "%d/%d" % (len(recs), count))
 
-    fields = ("title", "category", "reason", "freshness")
+    fields = ("title", "category", "reason", "published_at")
     complete = [r for r in recs if all(r.get(f) for f in fields)]
-    check(len(complete) == len(recs) and recs, "质量", "字段完整(title/category/reason/freshness)",
+    check(len(complete) == len(recs) and bool(recs), "质量", "字段完整(title/category/reason/published_at)",
           "%d/%d" % (len(complete), len(recs)))
 
-    legal = [r for r in recs if r.get("freshness") in ("new", "recent", "old")]
-    check(len(legal) == len(recs) and recs, "质量", "freshness 取值合法",
-          "%d/%d" % (len(legal), len(recs)))
+    from datetime import date as _date
+    bad_dates = []
+    for r in recs:
+        try:
+            _date.fromisoformat(r.get("published_at") or "")
+        except ValueError:
+            bad_dates.append(r.get("id") or "?")
+    check(not bad_dates, "质量", "published_at 可解析", "异常: %s" % bad_dates)
+
+    from app import candidates as _cand, validate as _val
+    rep = _val.check(recs, _cand.load_pool(), _date.fromisoformat(out["eval_date"]),
+                     history=DEMO["history"])
+    check(rep["ok"], "质量", "校验无错误", "；".join(rep["errors"]))
+    print("　　统计：类目 %d 个 / 引用历史 %d 条 / 理由均长 %.1f 字"
+          % (rep["stats"]["types"], rep["stats"]["cites"], rep["stats"]["avg_reason_len"]))
+    if rep["warnings"]:
+        print("　　提醒：" + "；".join(rep["warnings"]))
 
     cats = {r.get("category") for r in recs if r.get("category")}
     check(len(cats) >= 3, "质量", "类目多样性 >= 3", "%d 类: %s" % (len(cats), ",".join(sorted(cats))))
@@ -182,7 +198,13 @@ def evaluate_output(out, count):
 
 def config_prompt_text():
     try:
-        return build_recs_messages(DEMO["user_profile"], DEMO["history"], DEMO["request"], 5)[1]["content"]
+        from app import candidates as _cand
+        _pool = _cand.load_pool()
+        _eval = _cand.today()
+        return build_recs_messages(
+            DEMO["user_profile"], DEMO["history"], DEMO["request"],
+            _cand.render_for_prompt(_pool, _eval), count=5,
+        )[1]["content"]
     except Exception:
         return ""
 
