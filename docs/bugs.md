@@ -26,6 +26,8 @@
 | BUG-015 | README 克隆命令重复执行产生嵌套目录 | 中 | 陌生人复现时踩到 | 已修 |
 | BUG-016 | dry-run 截断 prompt 却不说明，像只有 6 条候选 | 中 | 用户误判候选池大小 | 已修 |
 | BUG-017 | 快速开始难读：无目标、无分步、无成功标志 | 中 | 用户反馈 | 已修 |
+| BUG-018 | 回归门禁用百分比比较导致浮点误判 | 高 | 红→绿演示时发现 | 已修 |
+| BUG-019 | 占位 workflow 让每次 push 都显示失败 | 中 | 查看 Actions 记录 | 已修 |
 
 ---
 
@@ -465,3 +467,32 @@ Docker 提升为独立的一节「另一种方式：Docker」，并注明什么�
 
 **教训**：**快速开始的每一节都该能回答「我现在在哪、怎么知道成功了」。**
 命令清单只解决了「怎么做」，解决不了「我做对了吗」——而后者才是新手卡住的地方。
+
+---
+
+## BUG-019 骨架里的占位 workflow 让每次 push 都显示失败
+
+**现象**：GitHub Actions 页面上连续两条 `completed / failure`，名字显示为
+`.github/workflows/eval.yml`（路径而不是 workflow 名）。
+
+**原因**：项目骨架里的 `eval.yml` 只有注释，没有 `on:` 和 `jobs:`：
+
+```yaml
+# M5：回归门禁。成功率低于基线 5% 则 exit 1（红→绿截图是面试材料）。
+# on: [push, pull_request]
+# jobs:
+#   regression:
+```
+
+GitHub 解析这种文件会报「Invalid workflow file」，每次 push 都记一次失败。
+而它名字显示成路径，是因为没有 `name:` 字段。
+
+**发现方式**：写 M5 的真实 workflow 后查 Actions 记录，看到之前的红点，
+一度以为是新 workflow 失败。
+
+**修复**：换成完整的 `name: eval` + 两个 job（test / regression）。
+之后 push 触发 `eval | completed | success`。
+
+**教训**：占位文件要用「不会被执行」的形式表达。一个空的/注释掉的 CI 配置
+不是中性状态——它会持续产生红色信号，把真正的失败淹没掉。
+如果当时就想占位，应该连文件一起不要提交，或者用 `workflow_dispatch` 且带 `exit 0`。

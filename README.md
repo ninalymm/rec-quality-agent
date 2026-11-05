@@ -3,7 +3,9 @@
 > 给推荐结果做**可量化**的质量评估：一套可执行的评分标准 + 双模型裁判 + 一致性分析，
 > 而不是「看几个 case 拍脑袋」。
 
-**状态**：M0–M4 完成 ｜ 83 个离线测试 ｜ app 覆盖率 85.8% ｜ Python 3.10+
+![eval](https://github.com/ninalymm/rec-quality-agent/actions/workflows/eval.yml/badge.svg)
+
+**状态**：M0–M4 完成 ｜ M5 门禁已接入 CI ｜ 83 个离线测试 ｜ app 覆盖率 85.8% ｜ Python 3.10+
 
 ---
 
@@ -145,7 +147,7 @@ app/config.py       配置：全项目唯一的 os.getenv 出口
 - [x] **M2** 双 judge：kappa / 位置偏差 / 成本三个数字
 - [x] **M3** Agent 骨架：规划 → 工具 → 产出循环
 - [x] **M4** 工程化：结构化日志 + 超时重试 + Docker + 85.8% 覆盖率（已在新环境复现通过）
-- [ ] **M5** CI 回归门禁：改坏 prompt 能被 CI 拦住
+- [x] **M5** CI 回归门禁：20 条回归集 + 两关 CI（离线测试 / 真实回归）
 - [ ] **M6** 材料：demo 视频 + 10 分钟讲稿 + 失败案例
 
 每个里程碑的目标、产出、验收标准与证据位置，见 [docs/milestones.md](docs/milestones.md)。
