@@ -1,1 +1,19 @@
-# M4：docker compose up 一条命令起服务
+services:
+  api:
+    build:
+      context: .
+      args:
+        # 国内网络可用：BASE_IMAGE=docker.m.daocloud.io/library/python:3.10-slim
+        BASE_IMAGE: ${BASE_IMAGE:-python:3.10-slim}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    image: rec-quality-agent:0.1
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      LOG_LEVEL: INFO
+    volumes:
+      # 只挂运行时要写的数据目录，避免覆盖镜像里的代码
+      - ./data:/app/data
+    restart: unless-stopped

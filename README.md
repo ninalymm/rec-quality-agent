@@ -74,6 +74,26 @@ cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .giti
 .venv/bin/python -m scripts.check_m0 --live         # 完整验收（31 项）
 ```
 
+### 方式二：Docker（一条命令）
+
+```bash
+cp .env.example .env      # 填 key
+docker compose up -d --build
+curl localhost:8000/health
+curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
+curl localhost:8000/task/1
+```
+
+国内网络拉不到 `python:3.10-slim` 时，用镜像源覆盖：
+
+```bash
+docker build \
+  --build-arg BASE_IMAGE=docker.m.daocloud.io/library/python:3.10-slim \
+  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  -t rec-quality-agent:0.1 .
+docker compose up -d --no-build
+```
+
 没有 API key 也能验证链路：
 
 ```bash
