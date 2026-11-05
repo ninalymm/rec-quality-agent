@@ -49,6 +49,18 @@ def load(provider):
 def main():
     a = load("deepseek")
     b = load("qwen")
+
+    shas = {}
+    for name in ("deepseek", "qwen"):
+        path = config.DATA_DIR / ("judged_%s.jsonl" % name)
+        if path.exists():
+            first = json.loads(open(path, encoding="utf-8").readline())
+            shas[name] = first.get("recs_sha") or "(未记录)"
+    print("recs 指纹：deepseek=%s  qwen=%s" % (shas.get("deepseek"), shas.get("qwen")))
+    if len(set(shas.values())) > 1:
+        print("\n✗ 两份判定对应的 recs 版本不一致，比较结果无意义，先重判。")
+        return 1
+    print()
     common = [q for q in a if q in b]
     print("对比样本：%d 条\n" % len(common))
 

@@ -7,6 +7,7 @@
 """
 import argparse
 import csv
+import hashlib
 import json
 import threading
 import time
@@ -25,11 +26,13 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     args = ap.parse_args()
 
+    recs_path = DATA / "recs_v1.jsonl"
+    recs_sha = hashlib.sha256(recs_path.read_bytes()).hexdigest()[:8]
     out_path = DATA / ("judged_%s.jsonl" % args.provider)
     done = {json.loads(l)["qid"] for l in open(out_path, encoding="utf-8")} if out_path.exists() else set()
 
     queries = {r["qid"]: r for r in csv.DictReader(open(DATA / "queries.csv", encoding="utf-8-sig"))}
-    recs = [json.loads(l) for l in open(DATA / "recs_v1.jsonl", encoding="utf-8")]
+    recs = [json.loads(l) for l in open(recs_path, encoding="utf-8")]
     todo = [r for r in recs if r["qid"] not in done]
     if args.limit:
         todo = todo[: args.limit]
@@ -43,6 +46,7 @@ def main():
         res = judge(q, r["recommendations"], provider=args.provider,
                     eval_date=None)
         rec = {"qid": r["qid"], "note": r["note"], "provider": args.provider,
+               "recs_sha": recs_sha,
                "dims": res["dims"], "summary": res["summary"],
                "labels": res["explain_labels"], "cost_cny": res["cost_cny"]}
         with lock:
@@ -65,6 +69,7 @@ def main():
 
     print("\n完成 %d 条，失败 %d 条，耗时 %.1fs，成本 ¥%.4f"
           % (state["ok"], state["fail"], time.time() - t0, state["cost"]))
+    print("recs 指纹：%s（%s）" % (recs_sha, recs_path.name))
 
 
 if __name__ == "__main__":
