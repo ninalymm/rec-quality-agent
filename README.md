@@ -124,6 +124,13 @@ app/config.py       配置：全项目唯一的 os.getenv 出口
 
 完整报告与失败分析见 [eval/REPORT.md](eval/REPORT.md)。
 
+### CI 门禁
+
+![CI 红→绿](docs/img/ci-runs.png)
+
+改坏一句 prompt 后：`test` 仍然通过（代码没坏），但 `regression` 失败（质量退化）。
+恢复后两者全绿。完整记录见 [docs/ci-evidence.md](docs/ci-evidence.md)。
+
 ## 设计取舍
 
 | 决定 | 理由 |

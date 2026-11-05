@@ -1,5 +1,7 @@
 # CI 门禁的红→绿记录
 
+![CI 红→绿](img/ci-runs.png)
+
 > M5 的验收标准：CI 上有一次真实的红→绿。
 > 用分支 `demo/break-prompt` 做的演示，不影响 `main` 的绿色状态。
 
