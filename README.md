@@ -62,8 +62,13 @@ cd rec-quality-agent
 /usr/local/bin/python3.10 -m venv .venv
 .venv/bin/pip install -r requirements.txt        # 国内可加：-i https://pypi.tuna.tsinghua.edu.cn/simple
 
-cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .gitignore 排除）
+# 复制配置模板并直接打开编辑（已存在则不覆盖，避免冲掉已填的 key）
+[ -f .env ] || cp .env.example .env
+open -e .env              # macOS；Linux 用 xdg-open .env，Windows 用 notepad .env
 ```
+
+在 `.env` 里填 `DEEPSEEK_API_KEY=sk-...`（或 `DASHSCOPE_API_KEY`），保存即可。
+`.env` 已被 `.gitignore` 排除，不会进版本库。
 
 > clone 用 SSH 地址（`git@`）。用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md) 第 1 条。
 
@@ -79,7 +84,7 @@ cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .giti
 ### 方式二：Docker（一条命令）
 
 ```bash
-cp .env.example .env      # 填 key
+[ -f .env ] || cp .env.example .env && open -e .env    # 填 key 后保存
 docker compose up -d --build
 curl localhost:8000/health
 curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
