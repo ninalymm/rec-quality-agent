@@ -18,6 +18,8 @@
 | BUG-007 | git 身份缺失导致 commit 失败 | 中 | commit 时报错 | 已修 |
 | BUG-008 | `.DS_Store` 未被忽略 | 低 | `git status` | 已修 |
 | BUG-009 | README 里的 shell 命令语法错误 | 中 | 复查文档 | 已修 |
+| BUG-010 | 分析脚本用 zip 对齐并发写出的文件 | 中 | 对比数字对不上 | 已修 |
+| BUG-011 | 调度器传两参、handler 只收一参 | 高 | 跑任务时报 TypeError | 已修 |
 
 ---
 
@@ -252,3 +254,33 @@ common = sorted(set(ds) & set(qw))
 问题只出在临时的对比脚本上。结论：**并发写出的文件，任何跨文件对齐都必须用 id，不能用行号**。
 
 **教训**：这类错误不会报错，只会让数字悄悄偏掉；而偏掉的数字如果先写进报告，很难再发现。
+
+---
+
+## BUG-011 调度器传两参、handler 只收一参
+
+**现象**：重构为声明式调度后跑 Q007，模型连续两次调用 `generate_recs` 都拿到：
+
+```
+TypeError: _tool_generate() takes 1 positional argument but 2 were given
+```
+
+**有意思的地方**：Agent 自己把这个错误诊断出来了——
+
+> `generate_recs` 连续两次返回同一个内部错误……说明该工具的实现存在参数签名 bug
+> （把 qid 当作第二个位置参数传入），并非偶发失败。
+
+它甚至建议「修复参数绑定后重跑」。但这恰恰说明**不能靠模型兜底来掩盖代码 bug**：
+模型花了两轮、多花 ¥0.002 才绕过去，而正确做法是一次跑通。
+
+**根因**：`dispatch` 调用约定是 `handler(state, args)`，但三个 handler 写成了单参数。
+单元测试没覆盖到——测试里用 stub 替换了 handler，反而绕开了签名检查。
+
+**修复**：三个 handler 统一改为 `(state, args=None)`。
+
+**防复发**：新增 `test_provides_covers_requirements`（检查依赖图无断头），
+但**没有**测试 handler 签名——这是缺陷。补法：加一条测试，遍历 `TOOL_SPECS`
+用假 state/args 调用每个 handler，断言不会抛 `TypeError`。
+
+**教训**：用 stub 替换被测对象时，会同时绕开它与调度器之间的契约检查。
+契约类缺陷（参数个数、返回结构）必须有单独的测试，不能只测业务逻辑。
