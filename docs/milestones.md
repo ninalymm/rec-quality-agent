@@ -12,7 +12,7 @@
 | **M2** 双 judge | 三个数字：kappa / 位置偏差 / 成本 | `judge.py`、`agreement.py`、`REPORT.md` | 三个数字都有，且能解释怎么算的 | ✅ |
 | **M3** Agent 骨架 | 规划 → 工具 → 产出循环 | `agent.py`、`main.py`、`store.py` | `curl` 能拿到结果，trace 能看到每步输入输出与耗时 | ✅ |
 | **M4** 工程化 | 别人 10 分钟能跑起来 | 结构化日志、超时重试降级、Docker、83 个测试 | 新环境照 README 跑通一次（已由第二方复现） | ✅ |
-| **M5** CI 门禁 | 改坏 prompt 能被 CI 拦住 | `.github/workflows/eval.yml`、20 条回归集 | CI 上有一次真实的红→绿记录（待配 secret 后演示） | 🚧 |
+| **M5** CI 门禁 | 改坏 prompt 能被 CI 拦住 | `.github/workflows/eval.yml`、20 条回归集 | CI 上有一次真实的红→绿记录（已完成，见 [ci-evidence.md](ci-evidence.md)） | ✅ |
 | **M6** 材料 | 能对着人讲 10 分钟 | demo 视频、讲稿、3 个失败案例 | 讲完不卡壳 | ⬜ |
 
 ## 证据在哪

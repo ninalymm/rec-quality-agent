@@ -147,7 +147,7 @@ app/config.py       配置：全项目唯一的 os.getenv 出口
 - [x] **M2** 双 judge：kappa / 位置偏差 / 成本三个数字
 - [x] **M3** Agent 骨架：规划 → 工具 → 产出循环
 - [x] **M4** 工程化：结构化日志 + 超时重试 + Docker + 85.8% 覆盖率（已在新环境复现通过）
-- [x] **M5** CI 回归门禁：20 条回归集 + 两关 CI（离线测试 / 真实回归）
+- [x] **M5** CI 回归门禁：20 条回归集 + 两关 CI（[红→绿记录](docs/ci-evidence.md)）
 - [ ] **M6** 材料：demo 视频 + 10 分钟讲稿 + 失败案例
 
 每个里程碑的目标、产出、验收标准与证据位置，见 [docs/milestones.md](docs/milestones.md)。
