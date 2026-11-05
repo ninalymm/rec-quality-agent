@@ -56,9 +56,11 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 要求 **Python 3.10+**（代码用了 `X | None` 语法）。不需要 pandas，也不再受"Rosetta 下 x86 wheel 被拒载"的影响。
 
 ```bash
+# ① 克隆（在空目录执行；如果当前目录已经是本仓库根目录，跳过这两行）
 git clone git@github.com:ninalymm/rec-quality-agent.git
 cd rec-quality-agent
 
+# ② 建虚拟环境并装依赖
 /usr/local/bin/python3.10 -m venv .venv
 .venv/bin/pip install -r requirements.txt        # 国内可加：-i https://pypi.tuna.tsinghua.edu.cn/simple
 
