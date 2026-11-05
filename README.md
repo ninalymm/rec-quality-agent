@@ -20,9 +20,9 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 | 指标 | 实测值 | 怎么来的 |
 |---|---|---|
-| 验收检查 | **31/31 通过** | `python -m scripts.check_m0 --live` |
-| 离线单测 | **22 passed** | 不联网、不需要 key，CI 可跑 |
-| 单次调用成本 | **¥0.0028** | prompt 200 + completion 303 tokens |
+| 验收检查 | **全部通过**（结构 23 项 + 实时 7 项） | `python -m scripts.check_m0 --live` |
+| 离线单测 | **81 passed** | 不联网、不需要 key，覆盖率 85% |
+| 单次调用成本 | **¥0.006** | prompt ~2100（含 80 条候选）+ completion ~230 tokens |
 | 推荐条数 | 5/5，字段齐全 | 结构合规检查 |
 | 类目多样性 | 3 类（技术深度 / 职场 / 跑步） | 同一 batch 内去重计数 |
 | 理由可解释性 | 平均 40.2 字，5/5 引用用户画像或历史 | 启发式匹配 |
@@ -30,7 +30,7 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 以上数字均可复现，不是估计值。
 
-### M1：评测集（已完成）
+### M1 产出明细
 
 | 产出 | 规模 | 位置 |
 |---|---|---|
@@ -287,17 +287,29 @@ M2 完成后填入。计划记录三个数字：
 | 评测成本 | 单条 **¥0.009**，200 条全量 **¥1.73** | ✅ 已实测 |
 | judge ↔ 人工 kappa | DeepSeek **0.300** / Qwen 0.238（51 条） | ✅ 已完成，判定单向偏宽 |
 
-## Roadmap
+## 里程碑 M0–M6
 
-| 里程碑 | 内容 | 状态 |
-|---|---|---|
-| M0 | 环境与数据：跑通一次 LLM 调用 | ✅ 完成 |
-| M1 | 评测集：200 条 query + rubric | ✅ 完成 |
-| M2 | 双 judge + 一致性分析（kappa / 偏差 / 成本） | ✅ 完成 |
-| M3 | Agent 骨架：规划 → 工具 → 产出循环 | ✅ 完成 |
-| M4 | 工程化：Docker + 结构化日志 + 测试覆盖 | ✅ 完成 |
-| M5 | CI 回归门禁（红 → 绿截图） | 🚧 进行中 |
-| M6 | 材料：3 分钟 demo + 讲稿 + 失败案例 | ⬜ |
+| 里程碑 | 目标 | 产出 | 验收标准 | 状态 |
+|---|---|---|---|---|
+| **M0** 环境与数据 | 跑通一次 LLM 调用 | repo 骨架、provider 工厂、验收脚本 | 验收脚本全绿（23 项结构检查） | ✅ |
+| **M1** 评测集 | 200 条 query + 评分标准 | `queries.csv`、`rubric.md`、`checklists.jsonl` | 陌生人能照 rubric 打分（已做 51 条人工试标） | ✅ |
+| **M2** 双 judge | 三个数字：kappa / 位置偏差 / 成本 | `judge.py`、`agreement.py`、`REPORT.md` | 三个数字都有，且能解释怎么算的 | ✅ |
+| **M3** Agent 骨架 | 规划 → 工具 → 产出循环 | `agent.py`、`main.py`、`store.py` | `curl` 能拿到结果，trace 能看到每步输入输出与耗时 | ✅ |
+| **M4** 工程化 | 别人 10 分钟能跑起来 | 结构化日志、超时重试降级、Docker、81 个测试 | 新环境照 README 跑通一次 | ✅ |
+| **M5** CI 门禁 | 改坏 prompt 能被 CI 拦住 | `.github/workflows/eval.yml`、回归集 | CI 上有一次真实的红→绿记录 | 🚧 |
+| **M6** 材料 | 能对着人讲 10 分钟 | demo 视频、讲稿、3 个失败案例 | 讲完不卡壳 | ⬜ |
+
+### 每个里程碑的证据在哪
+
+| 里程碑 | 可以直接指给人看的东西 |
+|---|---|
+| M0 | `python -m scripts.check_m0` 的输出；[tests/](tests/) 81 个离线用例 |
+| M1 | [data/queries.csv](data/queries.csv) 200 条 ｜ [eval/rubric.md](eval/rubric.md) 4 维度 ｜ [data/checklists.jsonl](data/checklists.jsonl) 200 组 |
+| M2 | [eval/REPORT.md](eval/REPORT.md)：judge↔judge kappa 0.485、judge↔人工 0.300、位置偏差 2%/12%、单条 ¥0.009 |
+| M3 | `python -m scripts.run_task --qid Q001` 的四步 trace；`data/tasks.db` 可回放 |
+| M4 | [Dockerfile](Dockerfile) + `docker compose up`；日志是单行 JSON（trace_id 可串全链路） |
+| M5 | 待建（计划：20 条回归任务 + GitHub Actions） |
+| M6 | 待建（计划：3 分钟 demo + 10 分钟讲稿 + 3 个失败案例） |
 
 ## 数据与日志的位置
 
