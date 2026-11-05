@@ -53,18 +53,20 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 ## 快速开始
 
-**目标**：5 分钟内，在终端看到一次真实的「生成 5 条推荐」，并跑通全部离线测试。
+**目标**：5 分钟内在终端看到 5 条真实推荐。
 
-需要做的四件事：
+分两步：**先准备环境（不花钱），再验证（先免费自检，最后花不到一分钱做一次真实调用）**。
 
-| 步 | 做什么 | 耗时 |
-|---|---|---|
-| 1 | 把代码拿下来 | 30 秒 |
-| 2 | 装 Python 依赖 | 1–2 分钟 |
-| 3 | 填一个 API key | 1 分钟 |
-| 4 | 验证：先跑测试，再真实调用一次 | 1 分钟 |
+| 步 | 做什么 | 耗时 | 花钱 |
+|---|---|---|---|
+| 1 | 准备环境：拿代码 / 装依赖 / 填 key | 3 分钟 | 否 |
+| 2 | 验证：3 条本地自检 + 1 次真实调用 | 1 分钟 | 约 ¥0.006 |
 
-### 第 1 步：拿代码
+### 第一步：准备环境
+
+三件事按顺序做完即可，不需要理解每一步的原理。
+
+**1.1 拿代码**
 
 ```bash
 cd ~/projects            # 换成任意你放代码的目录
@@ -72,14 +74,9 @@ git clone git@github.com:ninalymm/rec-quality-agent.git
 cd rec-quality-agent
 ```
 
-> 如果当前目录已经是本仓库，跳过这一步。
-> 必须用 SSH 地址（`git@`）；用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md) 第 1 条。
+> 已在仓库里就跳过。必须用 SSH（`git@`），https 在国内会卡 443。
 
-**成功标志**：目录里能看到 `app/`、`data/`、`README.md`。
-
-### 第 2 步：装依赖
-
-要求 **Python 3.10+**（代码用了 `X | None` 语法）。
+**1.2 装依赖**
 
 ```bash
 /usr/local/bin/python3.10 -m venv .venv
@@ -92,48 +89,61 @@ cd rec-quality-agent
 .venv/bin/pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 ```
 
-**成功标志**：`.venv/bin/python -V` 显示 3.10 或更高，且安装过程没有红色报错。
-
-### 第 3 步：填 API key
+**1.3 填 API key**
 
 ```bash
 [ -f .env ] || cp .env.example .env    # 已有 .env 则不覆盖
 open -e .env                           # macOS；Linux 用 xdg-open .env
 ```
 
-在打开的编辑器里填一行，二选一：
+在打开的编辑器里填一行（二选一），保存关闭：
 
 ```
 DEEPSEEK_API_KEY=sk-你的key
 DASHSCOPE_API_KEY=sk-你的key
 ```
 
-保存并关闭。`.env` 已在 `.gitignore` 里，不会进版本库。
+申请地址：DeepSeek https://platform.deepseek.com/api_keys ｜ Qwen https://bailian.console.aliyun.com/
 
-key 在哪里申请：
+**环境准备的自检清单**（三条都成立才进入下一步）：
 
-- DeepSeek → https://platform.deepseek.com/api_keys
-- Qwen（阿里云百炼）→ https://bailian.console.aliyun.com/
+- [ ] 目录里有 `app/` 和 `data/` 两个文件夹
+- [ ] `.venv/bin/python -V` 显示 3.10 或更高
+- [ ] `.env` 里填的那个 key 等号后面不是空的
 
-**成功标志**：`.env` 里对应变量等号后面不再是空的。
+### 第二步：验证
 
-### 第 4 步：验证
+**这一步在验证什么**：从「代码没坏」到「真的能调通模型」，一共四层。
+前三条不联网、不花钱，能在本地挡掉大部分配置问题；最后一条真的发一次请求。
 
-**先跑不花钱的三条**（全部通过再往下）：
+| 命令 | 验证什么 | 联网 | 花钱 |
+|---|---|---|---|
+| `pytest -q` | 代码逻辑没被改坏（81 个离线用例） | 否 | 否 |
+| `smoke_recs --dry-run` | 能读到 `.env`、prompt 拼装正确 | 否 | 否 |
+| `check_m0` | 环境 / 依赖 / 仓库 / 文档 共 23 项 | 否 | 否 |
+| `smoke_recs` | **整条链路真的通** | **是** | 约 ¥0.006 |
+
+**什么叫「真实调用」**：把拼好的 prompt 真的发到 DeepSeek 的 API，
+模型返回 5 条推荐，代码解析、打印，并算出这次花了几分钱。
+
+它是唯一能证明三件事的步骤：**key 有效**、**网络通**、**模型能按要求的 JSON 格式返回**。
+前面三条都只是本地检查——本地全绿但 key 无效，是很常见的情况。
+
+**先跑前三条**（都应通过）：
 
 ```bash
-.venv/bin/python -m pytest -q                     # 81 个离线单测，不联网
-.venv/bin/python -m scripts.smoke_recs --dry-run   # 检查配置与 prompt，不调模型
-.venv/bin/python -m scripts.check_m0               # 23 项结构检查
+.venv/bin/python -m pytest -q                     # 期望：81 passed
+.venv/bin/python -m scripts.smoke_recs --dry-run   # 期望：管线 OK
+.venv/bin/python -m scripts.check_m0               # 期望：通过 23/23
 ```
 
-**再跑一次真实调用**（约 ¥0.006）：
+**再跑真实调用**（会花约 ¥0.006）：
 
 ```bash
 .venv/bin/python -m scripts.smoke_recs
 ```
 
-**成功标志**：最后几行长这样——
+期望的最后几行：
 
 ```
 条数：5（期望 5）
@@ -141,7 +151,13 @@ tokens：prompt=2094 completion=250
 成本估算：¥0.006188
 ```
 
-看到「5 条推荐 + 成本」就说明整条链路通了。
+**看到「5 条推荐 + 成本」就说明全部打通了。** 如果这一步失败：
+
+| 报错 | 原因 | 怎么办 |
+|---|---|---|
+| `缺少 DEEPSEEK_API_KEY` | `.env` 没建或没填 | 回到 1.3 |
+| `key 无效或已过期` | key 复制不全 / 已失效 | 重新生成并更新 `.env` |
+| `连不上 API` | 网络或代理 | 检查代理；或用 `--provider ollama` |
 
 ### 没有 API key 也想验证链路？
 
