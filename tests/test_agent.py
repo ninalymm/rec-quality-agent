@@ -104,3 +104,23 @@ def test_dispatch_passes_args_through():
         assert received == {"qid": "Q999"}
     finally:
         _stub("generate_recs", old)
+
+
+# ---------- 评测已有推荐（不重新生成） ----------
+
+from scripts.eval_recs import metrics_of
+
+
+def test_metrics_of_basic():
+    recs = [{"category": "技术", "reason": "12345"},
+            {"category": "技术", "reason": "123"},
+            {"category": "职场", "reason": "1234567"}]
+    m = metrics_of(recs)
+    assert m["count"] == 3
+    assert m["types"] == 2
+    assert m["type_dist"] == {"技术": 2, "职场": 1}
+    assert m["avg_reason_len"] == 5.0
+
+
+def test_metrics_of_empty():
+    assert metrics_of([])["count"] == 0

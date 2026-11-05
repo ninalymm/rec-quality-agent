@@ -62,10 +62,13 @@ cp .env.example .env                              # 填 DEEPSEEK_API_KEY 或 DAS
 curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
 curl localhost:8000/task/1        # 按 task_id 回放完整 trace
 
-# 3. 只验证生成链路（不评测，适合排查配置）
+# 3. 评测**已经生成好**的推荐（不重新生成，只打分）
+.venv/bin/python -m scripts.eval_recs --input data/recs_v1.jsonl --limit 20
+
+# 4. 只验证生成链路（不评测，适合排查配置）
 .venv/bin/python -m scripts.smoke_recs
 
-# 4. 测试（全部离线，不需要 key）
+# 5. 测试（全部离线，不需要 key）
 .venv/bin/python -m pytest
 ```
 
@@ -73,6 +76,13 @@ Docker：
 
 ```bash
 docker compose up -d --build      # 起服务；国内拉不到基础镜像时见 docs/troubleshooting.md
+```
+
+`run_task` 是「生成 + 评测」；如果你的推荐来自别处（线上系统、人工构造、历史落盘），
+用 `eval_recs` 直接喂 JSONL 评测，不触发生成：
+
+```json
+{"qid": "Q001", "recommendations": [{"title": "...", "category": "技术", "published_at": "2026-10-20", "reason": "..."}]}
 ```
 
 跑完的任务存在 `data/tasks.db`，用 `python -m scripts.inspect_db` 或任意 SQLite 工具查看，
