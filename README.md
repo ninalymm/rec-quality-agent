@@ -155,7 +155,7 @@ app/config.py       配置：全项目唯一的 os.getenv 出口
 - [x] **M3** Agent 骨架：规划 → 工具 → 产出循环
 - [x] **M4** 工程化：结构化日志 + 超时重试 + Docker + 85.8% 覆盖率（已在新环境复现通过）
 - [x] **M5** CI 回归门禁：20 条回归集 + 两关 CI（[红→绿记录](docs/ci-evidence.md)）
-- [ ] **M6** 材料：demo 视频 + 10 分钟讲稿 + 失败案例
+- [x] **M6** 材料：10 分钟讲稿 + 三个失败案例（demo 视频由本人录制）
 
 每个里程碑的目标、产出、验收标准与证据位置，见 [docs/milestones.md](docs/milestones.md)。
 
@@ -163,6 +163,8 @@ app/config.py       配置：全项目唯一的 os.getenv 出口
 
 | 文档 | 内容 |
 |---|---|
+| [docs/talk-script.md](docs/talk-script.md) | 10 分钟讲稿（含 3 分钟压缩版与追问准备） |
+| [docs/failure-cases.md](docs/failure-cases.md) | 三个失败案例：指标测错了对象 |
 | [docs/milestones.md](docs/milestones.md) | M0–M6 的目标、产出、验收标准与证据 |
 | [eval/rubric.md](eval/rubric.md) | 评分标准：4 个维度、锚点、反例、聚合规则 |
 | [eval/REPORT.md](eval/REPORT.md) | 评测报告：kappa、位置偏差、成本、结论与局限 |

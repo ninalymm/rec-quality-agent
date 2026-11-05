@@ -6,6 +6,8 @@
 | [bugs.md](bugs.md) | 自己写的代码 / 文档的缺陷 | 修复的同一个 commit 里 |
 | [rubric-review.md](rubric-review.md) | 评分标准的设计缺陷与评审记录 | 每次改 rubric 时追加 |
 | [milestones.md](milestones.md) | M0–M6 的目标、产出、验收标准与证据 | 里程碑状态变化时 |
+| [talk-script.md](talk-script.md) | 10 分钟讲稿与追问准备 | 讲稿迭代时 |
+| [failure-cases.md](failure-cases.md) | 三个失败案例（面试材料） | 发现新的典型失败时 |
 | [closing-checklist.md](closing-checklist.md) | 里程碑收尾检查清单（8 项通用 + 各自专属验收） | 每个里程碑结束时 |
 | [sql-queries.md](sql-queries.md) | 任务库的常用 SQL | 新增查询时 |
 
