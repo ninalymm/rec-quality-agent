@@ -58,3 +58,49 @@ def test_provides_covers_requirements():
     for name, spec in TOOL_SPECS.items():
         for req in spec["requires"]:
             assert req in provided, "%s 需要 %s，但没有工具提供" % (name, req)
+
+
+# ---------- 契约测试：handler 必须符合调度器的调用约定 ----------
+
+import inspect
+
+
+def test_every_handler_accepts_state_and_args():
+    """调度器按 handler(state, args) 调用，签名必须能接受两个参数。
+
+    这条测试就是 BUG-011 的防复发：当时三个 handler 只收一个参数，
+    但单元测试用 stub 替换了它们，绕开了这个契约。
+    """
+    for name, spec in TOOL_SPECS.items():
+        sig = inspect.signature(spec["handler"])
+        try:
+            sig.bind(TaskState("Q001"), {})
+        except TypeError as exc:
+            raise AssertionError(
+                "工具 %s 的 handler 签名不兼容 handler(state, args): %s" % (name, exc))
+
+
+def test_every_tool_has_description_and_schema():
+    """模型靠 description 决定何时调用，缺了就会乱调。"""
+    for name, spec in TOOL_SPECS.items():
+        assert spec.get("description"), "%s 缺少 description" % name
+        params = spec.get("parameters")
+        assert isinstance(params, dict) and params.get("type") == "object", \
+            "%s 的 parameters 不是合法 JSON Schema" % name
+
+
+def test_dispatch_passes_args_through():
+    """调度器必须原样把 args 传给 handler，而不是丢掉或改写。"""
+    received = {}
+
+    def capture(state, args):
+        received.update(args)
+        return {"ok": 1}
+
+    old = _stub("generate_recs", capture)
+    try:
+        res = dispatch("generate_recs", TaskState("Q001"), {"qid": "Q999"})
+        assert res["ok"] is True
+        assert received == {"qid": "Q999"}
+    finally:
+        _stub("generate_recs", old)
