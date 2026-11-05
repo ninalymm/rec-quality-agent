@@ -20,6 +20,7 @@
 | BUG-009 | README 里的 shell 命令语法错误 | 中 | 复查文档 | 已修 |
 | BUG-010 | 分析脚本用 zip 对齐并发写出的文件 | 中 | 对比数字对不上 | 已修 |
 | BUG-011 | 调度器传两参、handler 只收一参 | 高 | 跑任务时报 TypeError | 已修 |
+| BUG-012 | requirements 缺 pytest-cov，新环境 pytest 直接失败 | 高 | 通读 README 时发现 | 已修 |
 
 ---
 
@@ -284,3 +285,34 @@ TypeError: _tool_generate() takes 1 positional argument but 2 were given
 
 **教训**：用 stub 替换被测对象时，会同时绕开它与调度器之间的契约检查。
 契约类缺陷（参数个数、返回结构）必须有单独的测试，不能只测业务逻辑。
+
+---
+
+## BUG-012 requirements 缺 pytest-cov，新环境跑 pytest 直接失败
+
+**现象**：`pytest.ini` 里有 `addopts = --cov=app --cov-fail-under=60`，
+但 `requirements.txt` 只写了 `pytest`，没写 `pytest-cov`。
+
+新机器照 README 装完依赖后跑 `pytest`：
+
+```
+ERROR: usage: pytest [options] [file_or_dir] [...]
+pytest: error: unrecognized arguments: --cov=app --cov-report=term-missing --cov-fail-under=60
+```
+
+**发现方式**：准备做「陌生人复现」验收时，**先照着 README 通读了一遍**，
+看到 pytest 那一行才想到「这个 --cov 是谁提供的」。
+
+**为什么本机没暴露**：`pytest-cov` 是我中途手动 `pip install` 的，
+没回写进 requirements——本机永远跑得通，新环境必挂。
+
+**修复**：requirements 补 `pytest-cov==7.1.0`。
+
+**顺带发现**：`pandas` 也在 requirements 里，但全项目**没有任何代码 import 它**
+（M1 处理 CSV 时用的是标准库 `csv`）。它还是「Rosetta 下轮子被拒载」那个坑的源头。
+
+**处理**：移除 pandas。README 里「必须原生 arm64」的说明相应改成「需要 Python 3.10+」。
+
+**教训**：依赖清单最容易出现「本机能跑、新环境挂」的隐性缺陷——因为开发过程中
+随手 `pip install` 的东西，没人会记得回填。**唯一可靠的检验是换一个干净环境装一遍**，
+这也正是 M4 那条「陌生人 10 分钟跑起来」验收的价值。

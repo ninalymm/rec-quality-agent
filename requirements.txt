@@ -3,7 +3,7 @@ openai==2.2.0
 fastapi==0.124.4
 uvicorn>=0.30
 python-dotenv==1.0.1
-# M1 起用于评测集处理（需 Python 3.10+ 原生 arm64，否则 macOS 会拒载 x86 wheel）
-pandas==2.3.3
-# 开发
+
+# 开发（pytest.ini 用了 --cov，缺 pytest-cov 会导致 pytest 直接报错）
 pytest==8.3.5
+pytest-cov==7.1.0

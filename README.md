@@ -53,22 +53,24 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 ## 快速开始
 
-要求 **Python 3.10+，原生 arm64**。Apple Silicon 上用 Rosetta 的 x86 解释器会导致 pandas 加载失败（原因见 [troubleshooting](docs/troubleshooting.md) 第 4 条）。
+要求 **Python 3.10+**（代码用了 `X | None` 语法）。不需要 pandas，也不再受"Rosetta 下 x86 wheel 被拒载"的影响。
 
 ```bash
 git clone git@github.com:ninalymm/rec-quality-agent.git
 cd rec-quality-agent
 
 /usr/local/bin/python3.10 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt        # 国内可加：-i https://pypi.tuna.tsinghua.edu.cn/simple
 
 cp .env.example .env      # 填入 DeepSeek 或 Qwen 的 key（.env 已被 .gitignore 排除）
 ```
 
+> clone 用 SSH 地址（`git@`）。用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md) 第 1 条。
+
 跑起来：
 
 ```bash
-.venv/bin/python -m pytest                          # 22 个离线单测（不需要 key）
+.venv/bin/python -m pytest                          # 81 个离线单测（不需要 key）
 .venv/bin/python -m scripts.smoke_recs --dry-run    # 只检查配置与 prompt，不花钱
 .venv/bin/python -m scripts.smoke_recs              # 真实调用：生成 5 条推荐
 .venv/bin/python -m scripts.check_m0 --live         # 完整验收（31 项）
