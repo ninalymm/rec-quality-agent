@@ -52,11 +52,12 @@ def dry_run(provider, model, count):
     _pool = _cand.load_pool()
     _eval = _cand.today()
     messages = build_recs_messages(**DEMO, candidates_text=_cand.render_for_prompt(_pool, _eval), count=count)
-    print("\n[dry-run] prompt 共 %d 条消息，%d 字符" % (
-        len(messages), sum(len(m["content"]) for m in messages)
-    ))
+    body = messages[1]["content"]
+    n_cand = sum(1 for line in body.splitlines() if line.startswith("C0"))
+    print("\n[dry-run] prompt 共 %d 条消息，%d 字符；候选 %d 条"
+          "（下面只显示前 400 字符）" % (len(messages), len(body), n_cand))
     print("-" * 60)
-    print(messages[1]["content"][:400] + " ...")
+    print(body[:400] + " ...")
     print("-" * 60)
     print("[dry-run] 管线 OK：配置、prompt 构造、JSON 解析函数都可导入。")
     return 0
