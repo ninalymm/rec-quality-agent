@@ -104,6 +104,46 @@ ollama pull qwen2.5:7b
 
 7B 模型出结构化 JSON 不稳定，只适合验链路，不适合跑评测。
 
+## 跑完之后：怎么看结果
+
+每次任务会写一行到 `data/tasks.db`（本地）或 `data/tasks-container.db`（容器），
+包含结论、完整轨迹、耗时与成本。三种查看方式：
+
+```bash
+# ① 命令行（不装任何东西）
+python -m scripts.inspect_db                 # 最近 10 条
+python -m scripts.inspect_db --trace 9       # 某条的完整轨迹
+python -m scripts.inspect_db --db data/tasks-container.db
+
+# ② sqlite3（系统自带）
+sqlite3 -header -column data/tasks.db \
+  "SELECT id,qid,status,steps,round(cost_cny,5) FROM tasks ORDER BY id DESC LIMIT 5;"
+
+# ③ GUI：DBeaver / TablePlus 新建 SQLite 连接，选 data/tasks.db
+```
+
+`inspect_db --trace` 的输出：
+
+```
+任务 9 | qid=Q030 | status=done | steps=4 | ¥0.00504 | 839d38434ee3
+步   工具                 耗时      结果
+1    generate_recs       3236ms    {"count": 5, "titles": [...]}
+2    metrics_calc        848ms     {"count": 5, "types": 3, ...}
+3    score_with_rubric   2189ms    {"dims": {...}}
+4    (final)             1057ms    **Q030 评测结论…**
+```
+
+轨迹存成 JSON 字段，用 SQLite 的 `json_each` 可以拆开做聚合——比如统计各工具的平均耗时：
+
+```sql
+SELECT json_extract(t.value,'$.tool') AS tool,
+       ROUND(AVG(json_extract(t.value,'$.latency_ms'))) AS avg_ms
+FROM tasks, json_each(tasks.trace) t
+GROUP BY tool ORDER BY avg_ms DESC;
+```
+
+完整的查询清单见 [docs/sql-queries.md](docs/sql-queries.md)（总览 / 成本 / 性能 / 失败分析 / 导出）。
+
 ## 架构
 
 四层，依赖单向向下：
@@ -145,8 +185,8 @@ M2 完成后填入。计划记录三个数字：
 | M1 | 评测集：200 条 query + rubric | ✅ 完成 |
 | M2 | 双 judge + 一致性分析（kappa / 偏差 / 成本） | ✅ 完成 |
 | M3 | Agent 骨架：规划 → 工具 → 产出循环 | ✅ 完成 |
-| M4 | 工程化：Docker + 结构化日志 + 测试覆盖 | 🚧 进行中 |
-| M5 | CI 回归门禁（红 → 绿截图） | ⬜ |
+| M4 | 工程化：Docker + 结构化日志 + 测试覆盖 | ✅ 完成 |
+| M5 | CI 回归门禁（红 → 绿截图） | 🚧 进行中 |
 | M6 | 材料：3 分钟 demo + 讲稿 + 失败案例 | ⬜ |
 
 ## 数据与日志的位置
@@ -165,7 +205,7 @@ TASKS_DB=/tmp/my.db python -m scripts.run_task --qid Q001
 ## 开发
 
 ```bash
-.venv/bin/python -m pytest            # 22 个离线单测
+.venv/bin/python -m pytest            # 81 个离线单测，覆盖率低于 60% 会失败
 .venv/bin/python -m scripts.check_m0  # 结构层验收（24 项，不花钱）
 ```
 
@@ -196,15 +236,20 @@ rec-quality-agent/
 │   ├── agent.py              M3：规划-工具-产出循环
 │   ├── main.py               M3：FastAPI 入口
 │   ├── store.py              M3：SQLite 任务与轨迹
-│   ├── logging.py            M4：结构化日志
+│   ├── logging.py            M4：结构化日志（一行 JSON，trace_id 自动注入）
+│   ├── resilience.py         M4：分级超时 / 重试 / 降级
 │   └── tools/                M3：metrics.py / sql_query.py
 ├── scripts/
 │   ├── smoke_recs.py         最小链路验证：生成 5 条推荐
-│   └── check_m0.py           M0 验收：31 项检查
-├── tests/                    离线单测（22 个）
+│   ├── run_task.py           跑一次 Agent 任务并打印 trace
+│   ├── inspect_db.py         查看任务库与轨迹
+│   ├── gen_queries.py        生成 200 条评测 query（固定种子可复现）
+│   ├── gen_checklists.py     生成 200 组理想答案要点
+│   └── check_m0.py           M0 验收：24 项结构检查
+├── tests/                    81 个离线单测（不联网、不需要 key）
 ├── data/                     queries.csv / labels.csv（M1/M2 填充）
 ├── eval/                     rubric.md / judge.py / agreement.py / REPORT.md
-├── docs/                     README（索引与规则）/ troubleshooting.md / bugs.md
+├── docs/                     troubleshooting / bugs / rubric-review / sql-queries
 ├── .github/workflows/        M5：CI 回归门禁
 ├── pytest.ini                测试路径与导入路径
 └── requirements.txt
