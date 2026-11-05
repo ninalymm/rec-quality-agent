@@ -50,7 +50,8 @@ def section_env():
     if arch == "x86_64" and platform.platform().lower().find("arm") >= 0:
         check(False, "环境", "非 Rosetta x86_64", arch)
 
-    for mod in ("openai", "dotenv", "pandas", "fastapi", "pytest", "uvicorn"):
+    # 与 requirements.txt 保持一致：pandas 已于 2026-11-05 移除（无代码引用）
+    for mod in ("openai", "dotenv", "fastapi", "pytest", "uvicorn"):
         try:
             m = __import__(mod)
             ver = getattr(m, "__version__", "?")

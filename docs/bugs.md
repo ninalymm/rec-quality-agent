@@ -22,6 +22,7 @@
 | BUG-011 | 调度器传两参、handler 只收一参 | 高 | 跑任务时报 TypeError | 已修 |
 | BUG-012 | requirements 缺 pytest-cov，新环境 pytest 直接失败 | 高 | 通读 README 时发现 | 已修 |
 | BUG-013 | `cp .env.example .env` 会清空已填的 key | 高 | 用户反馈时顺带发现 | 已修 |
+| BUG-014 | 移除 pandas 后 check_m0 仍要求它 | 高 | 干净环境跑验收 | 已修 |
 
 ---
 
@@ -349,3 +350,29 @@ open -e .env                            # 直接打开编辑
 **教训**：文档里的「初始化」命令应该默认**幂等**——用户可能在任何时候重跑，
 而不是只在干净环境跑一次。所有 `cp` / `mv` / `rm` 出现在快速开始里时，都要问一句
 「第二次跑会发生什么」。
+
+---
+
+## BUG-014 移除 pandas 后，check_m0 仍把它当必需依赖
+
+**现象**：在新环境跑 M0 验收，第一条就红：
+
+```
+[✗] 依赖可导入: pandas  ← No module named 'pandas'
+```
+
+但 `pandas` 是当天刚被从 `requirements.txt` 移除的（BUG-012 的连带改动，全项目无 import）。
+
+**根因**：`scripts/check_m0.py` 里硬写了一份依赖清单，与 `requirements.txt` 是**两份独立的真相**。
+删依赖时只改了 requirements，没同步验收脚本。
+
+**为什么本机没暴露**：旧 venv 里 pandas 还装着（当初 pip install 的残留），
+所以 `__import__("pandas")` 一路绿灯。**只有干净环境才会红。**
+
+**修复**：从 check_m0 的清单里移除 pandas，并注明与 requirements 同步。
+
+**防复发**：依赖清单不该在两处各写一份。更好的做法是让 check_m0 读 `requirements.txt` 解析包名，
+而不是维护一个手写列表——这样删依赖只需改一处。
+
+**教训**：同一事实存在两个副本时，改一处必然漏另一处。
+这次是「依赖清单」，下次可能是「默认端口」「支持的模型列表」。
