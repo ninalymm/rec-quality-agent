@@ -12,8 +12,12 @@ import time
 
 from app import candidates, config
 from app.llm import client_for, cost_cny
+from app.logging import get_logger, log_step, log_task, new_trace_id
 from app.recs import generate_recs
+from app.resilience import run_tool
 from eval import judge as judge_mod
+
+log = get_logger()
 
 SYSTEM = """你是推荐质量 Agent。给定一个评测题号（qid），你的任务是：
 1. 调用 generate_recs 生成 5 条推荐
@@ -116,7 +120,7 @@ def _provider_for(keys):
     return None
 
 
-def dispatch(name, state, args):
+def dispatch(name, state, args, timeouts=None):
     """执行一次工具调用。返回 {ok, data} 或 {ok: False, error, hint}。"""
     spec = TOOL_SPECS.get(name)
     if spec is None:
@@ -128,16 +132,17 @@ def dispatch(name, state, args):
         return {"ok": False,
                 "error": "缺少前置数据: %s" % ", ".join(missing),
                 "hint": ("请先调用 %s" % provider) if provider else "无法自动修复"}
-    try:
-        return {"ok": True, "data": spec["handler"](state, args)}
-    except Exception as exc:
-        return {"ok": False, "error": "%s: %s" % (type(exc).__name__, str(exc)[:80]),
-                "hint": "检查参数或重试"}
+
+    ok, data, err = run_tool(name, lambda a: spec["handler"](state, a), args, timeouts)
+    if ok:
+        return {"ok": True, "data": data}
+    return {"ok": False, "error": err, "hint": "稍后重试；若持续失败请检查输入"}
 
 
 def run_task(qid, provider=None, max_steps=6, model=None):
     """跑一次任务，返回 result + trace + 成本。"""
     client, cfg = client_for(provider, model)
+    trace_id = new_trace_id()
     state = TaskState(qid)
     trace = []
     messages = [{"role": "system", "content": SYSTEM},
@@ -169,10 +174,13 @@ def run_task(qid, provider=None, max_steps=6, model=None):
                 args = {}
             res = dispatch(name, state, args)
             payload = res.get("data") if res["ok"] else {"error": res["error"], "hint": res.get("hint")}
+            latency = int((time.time() - t0) * 1000)
+            log_step(log, trace_id, step, name, args, payload, latency,
+                     ok=res["ok"], error=None if res["ok"] else res["error"])
             trace.append({"step": step, "tool": name, "args": args, "ok": res["ok"],
                           "error": None if res["ok"] else res["error"],
                           "result": json.dumps(payload, ensure_ascii=False)[:120],
-                          "latency_ms": int((time.time() - t0) * 1000)})
+                          "latency_ms": latency})
             messages.append({"role": "tool", "tool_call_id": call.id,
                              "content": json.dumps(payload, ensure_ascii=False)})
 
@@ -180,7 +188,13 @@ def run_task(qid, provider=None, max_steps=6, model=None):
         s = state.judgement["summary"]
         answer = "总分 %s，%s，%s" % (s["total"], s["grade"], "通过" if s["passed"] else "不通过")
 
+    errors = [t["error"] for t in trace if not t["ok"]]
+    status = "done" if state.judgement and not errors else ("partial" if state.recs else "failed")
+    error_reason = errors[0] if errors else None
+    log_task(log, trace_id, qid, status, len(trace), round(total_cost, 6), error_reason)
+
     return {"qid": qid, "result": answer, "trace": trace,
             "steps": len(trace), "cost_cny": round(total_cost, 6),
-            "tool_errors": sum(1 for t in trace if not t["ok"]),
+            "tool_errors": len(errors), "status": status, "error_reason": error_reason,
+            "trace_id": trace_id,
             "recs": state.recs, "judgement": state.judgement}
