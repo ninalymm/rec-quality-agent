@@ -12,3 +12,8 @@ build/
 .idea/
 .DS_Store
 data/tasks-container.db
+
+# 运行产物
+.coverage
+coverage.xml
+data/evaluated_*.jsonl
