@@ -53,47 +53,120 @@ M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的�
 
 ## 快速开始
 
-要求 **Python 3.10+**（代码用了 `X | None` 语法）。不需要 pandas，也不再受"Rosetta 下 x86 wheel 被拒载"的影响。
+**目标**：5 分钟内，在终端看到一次真实的「生成 5 条推荐」，并跑通全部离线测试。
+
+需要做的四件事：
+
+| 步 | 做什么 | 耗时 |
+|---|---|---|
+| 1 | 把代码拿下来 | 30 秒 |
+| 2 | 装 Python 依赖 | 1–2 分钟 |
+| 3 | 填一个 API key | 1 分钟 |
+| 4 | 验证：先跑测试，再真实调用一次 | 1 分钟 |
+
+### 第 1 步：拿代码
 
 ```bash
-# ① 克隆（在空目录执行；如果当前目录已经是本仓库根目录，跳过这两行）
+cd ~/projects            # 换成任意你放代码的目录
 git clone git@github.com:ninalymm/rec-quality-agent.git
 cd rec-quality-agent
+```
 
-# ② 建虚拟环境并装依赖
+> 如果当前目录已经是本仓库，跳过这一步。
+> 必须用 SSH 地址（`git@`）；用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md) 第 1 条。
+
+**成功标志**：目录里能看到 `app/`、`data/`、`README.md`。
+
+### 第 2 步：装依赖
+
+要求 **Python 3.10+**（代码用了 `X | None` 语法）。
+
+```bash
 /usr/local/bin/python3.10 -m venv .venv
-.venv/bin/pip install -r requirements.txt        # 国内可加：-i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 复制配置模板并直接打开编辑（已存在则不覆盖，避免冲掉已填的 key）
-[ -f .env ] || cp .env.example .env
-open -e .env              # macOS；Linux 用 xdg-open .env，Windows 用 notepad .env
+.venv/bin/pip install -r requirements.txt
 ```
 
-在 `.env` 里填 `DEEPSEEK_API_KEY=sk-...`（或 `DASHSCOPE_API_KEY`），保存即可。
-`.env` 已被 `.gitignore` 排除，不会进版本库。
-
-> clone 用 SSH 地址（`git@`）。用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md) 第 1 条。
-
-跑起来：
+国内网络慢就换清华源：
 
 ```bash
-.venv/bin/python -m pytest                          # 81 个离线单测（不需要 key）
-.venv/bin/python -m scripts.smoke_recs --dry-run    # 只检查配置与 prompt，不花钱
-.venv/bin/python -m scripts.smoke_recs              # 真实调用：生成 5 条推荐
-.venv/bin/python -m scripts.check_m0 --live         # 完整验收（31 项）
+.venv/bin/pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 ```
 
-### 方式二：Docker（一条命令）
+**成功标志**：`.venv/bin/python -V` 显示 3.10 或更高，且安装过程没有红色报错。
+
+### 第 3 步：填 API key
 
 ```bash
-[ -f .env ] || cp .env.example .env && open -e .env    # 填 key 后保存
+[ -f .env ] || cp .env.example .env    # 已有 .env 则不覆盖
+open -e .env                           # macOS；Linux 用 xdg-open .env
+```
+
+在打开的编辑器里填一行，二选一：
+
+```
+DEEPSEEK_API_KEY=sk-你的key
+DASHSCOPE_API_KEY=sk-你的key
+```
+
+保存并关闭。`.env` 已在 `.gitignore` 里，不会进版本库。
+
+key 在哪里申请：
+
+- DeepSeek → https://platform.deepseek.com/api_keys
+- Qwen（阿里云百炼）→ https://bailian.console.aliyun.com/
+
+**成功标志**：`.env` 里对应变量等号后面不再是空的。
+
+### 第 4 步：验证
+
+**先跑不花钱的三条**（全部通过再往下）：
+
+```bash
+.venv/bin/python -m pytest -q                     # 81 个离线单测，不联网
+.venv/bin/python -m scripts.smoke_recs --dry-run   # 检查配置与 prompt，不调模型
+.venv/bin/python -m scripts.check_m0               # 23 项结构检查
+```
+
+**再跑一次真实调用**（约 ¥0.006）：
+
+```bash
+.venv/bin/python -m scripts.smoke_recs
+```
+
+**成功标志**：最后几行长这样——
+
+```
+条数：5（期望 5）
+tokens：prompt=2094 completion=250
+成本估算：¥0.006188
+```
+
+看到「5 条推荐 + 成本」就说明整条链路通了。
+
+### 没有 API key 也想验证链路？
+
+用本地模型，不花钱（需要先装 [Ollama](https://ollama.com)）：
+
+```bash
+ollama serve                # 另开一个终端；或后台运行 ollama serve &
+ollama pull qwen2.5:7b
+.venv/bin/python -m scripts.smoke_recs --provider ollama
+```
+
+7B 模型输出结构化 JSON 不稳定，只适合验证链路，不适合跑评测。
+
+## 另一种方式：Docker
+
+**什么时候用**：不想在机器上装 Python 和 venv，或者想直接跑 HTTP 服务。
+
+**前置**：Docker Desktop 已启动（`docker info` 能返回信息）。
+
+```bash
+[ -f .env ] || cp .env.example .env && open -e .env   # 先填 key
 docker compose up -d --build
-curl localhost:8000/health
-curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
-curl localhost:8000/task/1
 ```
 
-国内网络拉不到 `python:3.10-slim` 时，用镜像源覆盖：
+国内网络拉不到 `python:3.10-slim` 时，改用镜像源构建：
 
 ```bash
 docker build \
@@ -103,15 +176,27 @@ docker build \
 docker compose up -d --no-build
 ```
 
-没有 API key 也能验证链路：
+验证：
 
 ```bash
-ollama serve                # 另开一个终端跑；或后台 ollama serve &
-ollama pull qwen2.5:7b
-.venv/bin/python -m scripts.smoke_recs --provider ollama
+curl localhost:8000/health
+curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
+curl localhost:8000/task/1
 ```
 
-7B 模型出结构化 JSON 不稳定，只适合验链路，不适合跑评测。
+**成功标志**：
+
+| 命令 | 期望输出 |
+|---|---|
+| `/health` | `{"ok":true}` |
+| `POST /task` | `{"task_id":1,"status":"done","steps":4,...}` |
+| `GET /task/1` | 含 `trace` 数组，能看到 4 个步骤 |
+
+用完关掉：
+
+```bash
+docker compose down
+```
 
 ## 跑完之后：怎么看结果
 
