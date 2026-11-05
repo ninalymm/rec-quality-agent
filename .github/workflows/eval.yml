@@ -1,8 +1,9 @@
 name: eval
 
 on:
+  # 所有分支都触发：允许用分支做「改坏 → 变红 → 改回 → 变绿」的演示，
+  # 不影响 main 的绿色状态
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
