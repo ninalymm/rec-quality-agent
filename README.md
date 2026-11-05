@@ -149,6 +149,19 @@ M2 完成后填入。计划记录三个数字：
 | M5 | CI 回归门禁（红 → 绿截图） | ⬜ |
 | M6 | 材料：3 分钟 demo + 讲稿 + 失败案例 | ⬜ |
 
+## 数据与日志的位置
+
+| 运行方式 | 任务数据库 | 日志 |
+|---|---|---|
+| 本地 | `data/tasks.db` | 终端 stderr（一行 JSON） |
+| Docker | `data/tasks-container.db`（compose 里用 `TASKS_DB` 指定） | `docker compose logs` |
+
+两者独立，互不污染。想改路径就设环境变量：
+
+```bash
+TASKS_DB=/tmp/my.db python -m scripts.run_task --qid Q001
+```
+
 ## 开发
 
 ```bash

@@ -51,3 +51,14 @@ def test_old_schema_migrated(tmp_path):
     cols = {r[1] for r in con.execute("PRAGMA table_info(tasks)")}
     con.close()
     assert "trace_id" in cols
+
+
+def test_default_path_uses_env(monkeypatch, tmp_path):
+    """TASKS_DB 环境变量应覆盖默认库路径。"""
+    monkeypatch.setenv("TASKS_DB", str(tmp_path / "container.db"))
+    assert store.default_path() == tmp_path / "container.db"
+
+
+def test_default_path_falls_back(monkeypatch):
+    monkeypatch.delenv("TASKS_DB", raising=False)
+    assert store.default_path().name == "tasks.db"

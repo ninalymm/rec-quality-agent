@@ -13,6 +13,8 @@ services:
       - .env
     environment:
       LOG_LEVEL: INFO
+      # 容器用自己的库，避免和本地 data/tasks.db 混在一起
+      TASKS_DB: /app/data/tasks-container.db
     volumes:
       # 只挂运行时要写的数据目录，避免覆盖镜像里的代码
       - ./data:/app/data

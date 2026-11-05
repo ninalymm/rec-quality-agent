@@ -1,5 +1,6 @@
 """M3：SQLite 持久化（任务 + 轨迹）。"""
 import json
+import os
 import sqlite3
 import time
 from pathlib import Path
@@ -7,6 +8,15 @@ from pathlib import Path
 from app import config
 
 DB_PATH = config.ROOT / "data" / "tasks.db"
+
+
+def default_path():
+    """数据库路径在调用时解析，便于用 TASKS_DB 环境变量区分本地与容器。
+
+    本地默认 data/tasks.db；容器里由 compose 指定 /app/data/tasks-container.db，
+    两者各自独立，避免线上/本地记录混在一起。
+    """
+    return Path(os.getenv("TASKS_DB") or DB_PATH)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks (
@@ -24,7 +34,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 
 def connect(path=None):
-    con = sqlite3.connect(str(path or DB_PATH))
+    con = sqlite3.connect(str(path or default_path()))
     con.executescript(SCHEMA)
     # 兼容旧库：缺列就补（SQLite 不支持 ADD COLUMN IF NOT EXISTS）
     cols = {r[1] for r in con.execute("PRAGMA table_info(tasks)")}
