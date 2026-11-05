@@ -1,383 +1,156 @@
-# 推荐质量 Agent（Rec-Quality Agent）
+# 推荐质量 Agent
 
-> 给一个用户请求 → 生成推荐 → 按 rubric 多维打分 → 输出质量问题与改进建议，每次改动都过 CI 回归校验。
+> 给推荐结果做**可量化**的质量评估：一套可执行的评分标准 + 双模型裁判 + 一致性分析，
+> 而不是「看几个 case 拍脑袋」。
 
-**状态**：M0–M3 完成 ✅ · Python 3.10+ · MIT
+**状态**：M0–M4 完成 ｜ 81 个离线测试 ｜ app 覆盖率 85% ｜ Python 3.10+
 
 ---
 
-## 它解决什么问题
+## 它做什么
 
-推荐系统的效果评估长期靠「看几个 case 拍脑袋」：改了一版 prompt 或策略，没人说得清是变好还是变坏，更说不清好多少。
+输入一条请求（用户画像 + 历史行为 + 诉求），Agent 做三件事：
 
-这个项目把评估变成可执行的东西：**评分标准（rubric）+ 双模型裁判（judge）+ 人工标注对账（kappa）+ CI 回归门禁**。
+1. **生成** 5 条推荐 —— 从 80 条候选池里挑；标题/类目/日期由代码填，模型只负责选哪 5 条、写理由
+2. **算指标** —— 类目覆盖、理由长度、类目分布
+3. **打分** —— 4 个维度：时效性、兴趣相关性、内容多样性、理由可解释性
 
-目标不是做一个推荐系统，而是给推荐系统装一套能持续跑的质检流水线。
+输出：总分（0–8）、逐维得分与证据、每一步的耗时 trace、本次成本。
 
-## 现在做到哪了
+**它不做什么**：它不是推荐系统本身。这个项目的重点是「怎么判断推荐好不好」，生成只是被评测的对象。
 
-M0（环境与数据）已完成：一次 LLM 调用能生成 5 条带理由的推荐，并被自动验收。
+## 看一次真实运行
 
-| 指标 | 实测值 | 怎么来的 |
-|---|---|---|
-| 验收检查 | **全部通过**（结构 23 项 + 实时 7 项） | `python -m scripts.check_m0 --live` |
-| 离线单测 | **81 passed** | 不联网、不需要 key，覆盖率 85% |
-| 单次调用成本 | **¥0.006** | prompt ~2100（含 80 条候选）+ completion ~230 tokens |
-| 推荐条数 | 5/5，字段齐全 | 结构合规检查 |
-| 类目多样性 | 3 类（技术深度 / 职场 / 跑步） | 同一 batch 内去重计数 |
-| 理由可解释性 | 平均 40.2 字，5/5 引用用户画像或历史 | 启发式匹配 |
-| 支持模型 | DeepSeek（默认）/ Qwen / 本地 Ollama | `--provider` 一行切换 |
+```console
+$ .venv/bin/python -m scripts.run_task --qid Q001
 
-以上数字均可复现，不是估计值。
+步   工具                 耗时      结果
+1    generate_recs      3610ms    5 条推荐
+2    metrics_calc        864ms    类目 3 个 / 理由均长 60.6 字
+3    score_with_rubric  2284ms    时效1 相关2 多样2 解释1
+4    (final)            1096ms    通过，总分 6/8（合格）
 
-### M1 产出明细
+结论：5 条推荐覆盖技术、职场、健康 3 个类目，多样性达标；
+主要短板是时效性（1 分）和可解释性（1 分），建议补充时效依据、加长推荐理由。
+成本 ¥0.0055
+```
 
-| 产出 | 规模 | 位置 |
-|---|---|---|
-| 评分标准 | 4 维度 + 聚合规则 | [`eval/rubric.md`](eval/rubric.md) |
-| 评测 query | **200 条**（180 常规 + 20 边界） | [`data/queries.csv`](data/queries.csv) |
-| 理想答案要点 | **200 组**，每组 3–4 条 | [`data/checklists.jsonl`](data/checklists.jsonl) |
-| 候选池 | **80 条**，8 类目 × 10 | [`data/candidates/pool_v1.csv`](data/candidates/pool_v1.csv) |
-| 生成器 | 可复现（固定随机种子） | [`scripts/gen_queries.py`](scripts/gen_queries.py) |
+## 安装
 
-三个设计取舍：
-
-1. **3 个客观维度 + 1 个语义维度**。日期、类目命中、类型数都能用代码算，交给模型只会引入方差；
-   只有「理由是否引用了具体历史」必须靠 judge 判断。
-2. **用候选池代替自由生成**。让模型自己编标题，`published_at` 也会是编的，时效性维度就失效了——
-   测到的成了「模型编日期的水平」。候选池让模型只能从给定条目里挑，日期由代码填充。
-3. **20 条边界案例**。无历史、单类目、兴趣冲突、条数限制、否定约束——正常用户不会这么问，
-   但 judge 最容易在这些地方出错，也是 M5 回归集的来源。
-
-设计过程中的 16 个问题与 6 类根因，记录在 [`docs/rubric-review.md`](docs/rubric-review.md)。
-
-## 快速开始
-
-**目标**：5 分钟内在终端看到 5 条真实推荐。
-
-分两步：**先准备环境（不花钱），再验证（先免费自检，最后花不到一分钱做一次真实调用）**。
-
-| 步 | 做什么 | 耗时 | 花钱 |
-|---|---|---|---|
-| 1 | 准备环境：拿代码 / 装依赖 / 填 key | 3 分钟 | 否 |
-| 2 | 验证：3 条本地自检 + 1 次真实调用 | 1 分钟 | 约 ¥0.006 |
-
-### 第一步：准备环境
-
-三件事按顺序做完即可，不需要理解每一步的原理。
-
-**1.1 拿代码**
+要求 **Python 3.10+**。
 
 ```bash
-cd ~/projects            # 换成任意你放代码的目录
 git clone git@github.com:ninalymm/rec-quality-agent.git
 cd rec-quality-agent
+
+python3.10 -m venv .venv
+.venv/bin/pip install -r requirements.txt          # 国内可加 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+cp .env.example .env                              # 填 DEEPSEEK_API_KEY 或 DASHSCOPE_API_KEY
 ```
 
-> 已在仓库里就跳过。必须用 SSH（`git@`），https 在国内会卡 443。
+> clone 必须用 SSH（`git@`）。用 https 在国内会卡在 443，原因见 [troubleshooting](docs/troubleshooting.md)。
 
-**1.2 装依赖**
+## 用法
 
 ```bash
-/usr/local/bin/python3.10 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-```
+# 1. 跑一次完整评测（生成 → 指标 → 打分）
+.venv/bin/python -m scripts.run_task --qid Q001
 
-国内网络慢就换清华源：
-
-```bash
-.venv/bin/pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-```
-
-**1.3 填 API key**
-
-```bash
-[ -f .env ] || cp .env.example .env    # 已有 .env 则不覆盖
-open -e .env                           # macOS；Linux 用 xdg-open .env
-```
-
-在打开的编辑器里填一行（二选一），保存关闭：
-
-```
-DEEPSEEK_API_KEY=sk-你的key
-DASHSCOPE_API_KEY=sk-你的key
-```
-
-申请地址：DeepSeek https://platform.deepseek.com/api_keys ｜ Qwen https://bailian.console.aliyun.com/
-
-**环境准备的自检清单**（三条都成立才进入下一步）：
-
-- [ ] 目录里有 `app/` 和 `data/` 两个文件夹
-- [ ] `.venv/bin/python -V` 显示 3.10 或更高
-- [ ] `.env` 里填的那个 key 等号后面不是空的
-
-### 第二步：验证
-
-**这一步在验证什么**：从「代码没坏」到「真的能调通模型」，一共四层。
-前三条不联网、不花钱，能在本地挡掉大部分配置问题；最后一条真的发一次请求。
-
-| 命令 | 验证什么 | 联网 | 花钱 |
-|---|---|---|---|
-| `pytest -q` | 代码逻辑没被改坏（81 个离线用例） | 否 | 否 |
-| `smoke_recs --dry-run` | 能读到 `.env`、prompt 拼装正确 | 否 | 否 |
-| `check_m0` | 环境 / 依赖 / 仓库 / 文档 共 23 项 | 否 | 否 |
-| `smoke_recs` | **整条链路真的通** | **是** | 约 ¥0.006 |
-
-**什么叫「真实调用」**：把拼好的 prompt 真的发到 DeepSeek 的 API，
-模型返回 5 条推荐，代码解析、打印，并算出这次花了几分钱。
-
-它是唯一能证明三件事的步骤：**key 有效**、**网络通**、**模型能按要求的 JSON 格式返回**。
-前面三条都只是本地检查——本地全绿但 key 无效，是很常见的情况。
-
-**先跑前三条**（都应通过）：
-
-```bash
-.venv/bin/python -m pytest -q                     # 期望：81 passed
-.venv/bin/python -m scripts.smoke_recs --dry-run   # 期望：管线 OK
-.venv/bin/python -m scripts.check_m0               # 期望：通过 23/23
-```
-
-**再跑真实调用**（会花约 ¥0.006）：
-
-```bash
-.venv/bin/python -m scripts.smoke_recs
-```
-
-期望的最后几行：
-
-```
-条数：5（期望 5）
-tokens：prompt=2094 completion=250
-成本估算：¥0.006188
-```
-
-**看到「5 条推荐 + 成本」就说明全部打通了。** 如果这一步失败：
-
-| 报错 | 原因 | 怎么办 |
-|---|---|---|
-| `缺少 DEEPSEEK_API_KEY` | `.env` 没建或没填 | 回到 1.3 |
-| `key 无效或已过期` | key 复制不全 / 已失效 | 重新生成并更新 `.env` |
-| `连不上 API` | 网络或代理 | 检查代理；或用 `--provider ollama` |
-
-### 没有 API key 也想验证链路？
-
-用本地模型，不花钱（需要先装 [Ollama](https://ollama.com)）：
-
-```bash
-ollama serve                # 另开一个终端；或后台运行 ollama serve &
-ollama pull qwen2.5:7b
-.venv/bin/python -m scripts.smoke_recs --provider ollama
-```
-
-7B 模型输出结构化 JSON 不稳定，只适合验证链路，不适合跑评测。
-
-## 另一种方式：Docker
-
-**什么时候用**：不想在机器上装 Python 和 venv，或者想直接跑 HTTP 服务。
-
-**前置**：Docker Desktop 已启动（`docker info` 能返回信息）。
-
-```bash
-[ -f .env ] || cp .env.example .env && open -e .env   # 先填 key
-docker compose up -d --build
-```
-
-国内网络拉不到 `python:3.10-slim` 时，改用镜像源构建：
-
-```bash
-docker build \
-  --build-arg BASE_IMAGE=docker.m.daocloud.io/library/python:3.10-slim \
-  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
-  -t rec-quality-agent:0.1 .
-docker compose up -d --no-build
-```
-
-验证：
-
-```bash
-curl localhost:8000/health
+# 2. 起 HTTP 服务
+.venv/bin/python -m uvicorn app.main:app --port 8000
 curl -X POST localhost:8000/task -H "Content-Type: application/json" -d '{"qid":"Q001"}'
-curl localhost:8000/task/1
+curl localhost:8000/task/1        # 按 task_id 回放完整 trace
+
+# 3. 只验证生成链路（不评测，适合排查配置）
+.venv/bin/python -m scripts.smoke_recs
+
+# 4. 测试（全部离线，不需要 key）
+.venv/bin/python -m pytest
 ```
 
-**成功标志**：
-
-| 命令 | 期望输出 |
-|---|---|
-| `/health` | `{"ok":true}` |
-| `POST /task` | `{"task_id":1,"status":"done","steps":4,...}` |
-| `GET /task/1` | 含 `trace` 数组，能看到 4 个步骤 |
-
-用完关掉：
+Docker：
 
 ```bash
-docker compose down
+docker compose up -d --build      # 起服务；国内拉不到基础镜像时见 docs/troubleshooting.md
 ```
 
-## 跑完之后：怎么看结果
-
-每次任务会写一行到 `data/tasks.db`（本地）或 `data/tasks-container.db`（容器），
-包含结论、完整轨迹、耗时与成本。三种查看方式：
-
-```bash
-# ① 命令行（不装任何东西）
-python -m scripts.inspect_db                 # 最近 10 条
-python -m scripts.inspect_db --trace 9       # 某条的完整轨迹
-python -m scripts.inspect_db --db data/tasks-container.db
-
-# ② sqlite3（系统自带）
-sqlite3 -header -column data/tasks.db \
-  "SELECT id,qid,status,steps,round(cost_cny,5) FROM tasks ORDER BY id DESC LIMIT 5;"
-
-# ③ GUI：DBeaver / TablePlus 新建 SQLite 连接，选 data/tasks.db
-```
-
-`inspect_db --trace` 的输出：
-
-```
-任务 9 | qid=Q030 | status=done | steps=4 | ¥0.00504 | 839d38434ee3
-步   工具                 耗时      结果
-1    generate_recs       3236ms    {"count": 5, "titles": [...]}
-2    metrics_calc        848ms     {"count": 5, "types": 3, ...}
-3    score_with_rubric   2189ms    {"dims": {...}}
-4    (final)             1057ms    **Q030 评测结论…**
-```
-
-轨迹存成 JSON 字段，用 SQLite 的 `json_each` 可以拆开做聚合——比如统计各工具的平均耗时：
-
-```sql
-SELECT json_extract(t.value,'$.tool') AS tool,
-       ROUND(AVG(json_extract(t.value,'$.latency_ms'))) AS avg_ms
-FROM tasks, json_each(tasks.trace) t
-GROUP BY tool ORDER BY avg_ms DESC;
-```
-
-完整的查询清单见 [docs/sql-queries.md](docs/sql-queries.md)（总览 / 成本 / 性能 / 失败分析 / 导出）。
+跑完的任务存在 `data/tasks.db`，用 `python -m scripts.inspect_db` 或任意 SQLite 工具查看，
+常用查询见 [docs/sql-queries.md](docs/sql-queries.md)。
 
 ## 架构
 
 四层，依赖单向向下：
 
 ```
-scripts/           入口层   命令行脚本，只负责参数解析与输出
+scripts/            入口：CLI 脚本（run_task / smoke_recs / inspect_db）
       ↓
-app/recs.py        业务层   generate_recs()：编排调用、解析结果、计算成本
+app/agent.py        Agent 循环：模型决定调哪个工具，代码执行并维护状态
       ↓
-app/llm.py         能力层   provider 工厂（deepseek/qwen/ollama）+ 成本估算
-app/prompts.py     能力层   prompt 模板，与代码分离
+app/recs.py         业务：generate_recs() 生成推荐
+app/llm.py          能力：provider 工厂（deepseek / qwen / ollama）+ 成本估算
+app/prompts.py      能力：prompt 模板
       ↓
-app/config.py      配置层   全项目唯一的 os.getenv 出口
+app/config.py       配置：全项目唯一的 os.getenv 出口
 ```
 
-为什么这么分：
-
-- **`config.py` 收口配置**：业务代码里看不到环境变量和魔法数字，换超时、换默认模型只改一处
-- **`prompts.py` 独立**：M1 要反复加评分维度、M2 要做 A/B 顺序实验，prompt 必须能被单独 diff
-- **`llm.py` 不掺业务**：只负责建 client 和算钱；M2 的「双 judge」靠它一行切换 provider
-- **`recs.py` 是唯一的业务语义层**：也是 M3 里 `generate_recs` 这个工具的雏形
+三个工具构成固定依赖链：`generate_recs → metrics_calc → score_with_rubric`。
+工具参数只传 `qid`，其余数据从内存 state 取——模型擅长判断，不擅长搬运。
 
 ## 评测结果
 
-M2 完成后填入。计划记录三个数字：
-
-| 指标 | 当前结果 | 状态 |
-|---|---|---|
-| judge ↔ judge 一致性 | 客观维度 **1.000**；可解释性 **0.485**（v2，重跑波动 ±0.05） | ✅ 已完成（[REPORT.md](eval/REPORT.md)） |
-| 位置偏差 | 顺序反转后 DeepSeek **2.0%** / Qwen **12.0%** | ✅ 已完成（各 50 条） |
-| 评测成本 | 单条 **¥0.009**，200 条全量 **¥1.73** | ✅ 已实测 |
-| judge ↔ 人工 kappa | DeepSeek **0.300** / Qwen 0.238（51 条） | ✅ 已完成，判定单向偏宽 |
-
-## 里程碑 M0–M6
-
-| 里程碑 | 目标 | 产出 | 验收标准 | 状态 |
-|---|---|---|---|---|
-| **M0** 环境与数据 | 跑通一次 LLM 调用 | repo 骨架、provider 工厂、验收脚本 | 验收脚本全绿（23 项结构检查） | ✅ |
-| **M1** 评测集 | 200 条 query + 评分标准 | `queries.csv`、`rubric.md`、`checklists.jsonl` | 陌生人能照 rubric 打分（已做 51 条人工试标） | ✅ |
-| **M2** 双 judge | 三个数字：kappa / 位置偏差 / 成本 | `judge.py`、`agreement.py`、`REPORT.md` | 三个数字都有，且能解释怎么算的 | ✅ |
-| **M3** Agent 骨架 | 规划 → 工具 → 产出循环 | `agent.py`、`main.py`、`store.py` | `curl` 能拿到结果，trace 能看到每步输入输出与耗时 | ✅ |
-| **M4** 工程化 | 别人 10 分钟能跑起来 | 结构化日志、超时重试降级、Docker、81 个测试 | 新环境照 README 跑通一次 | ✅ |
-| **M5** CI 门禁 | 改坏 prompt 能被 CI 拦住 | `.github/workflows/eval.yml`、回归集 | CI 上有一次真实的红→绿记录 | 🚧 |
-| **M6** 材料 | 能对着人讲 10 分钟 | demo 视频、讲稿、3 个失败案例 | 讲完不卡壳 | ⬜ |
-
-### 每个里程碑的证据在哪
-
-| 里程碑 | 可以直接指给人看的东西 |
+| 指标 | 结果 |
 |---|---|
-| M0 | `python -m scripts.check_m0` 的输出；[tests/](tests/) 81 个离线用例 |
-| M1 | [data/queries.csv](data/queries.csv) 200 条 ｜ [eval/rubric.md](eval/rubric.md) 4 维度 ｜ [data/checklists.jsonl](data/checklists.jsonl) 200 组 |
-| M2 | [eval/REPORT.md](eval/REPORT.md)：judge↔judge kappa 0.485、judge↔人工 0.300、位置偏差 2%/12%、单条 ¥0.009 |
-| M3 | `python -m scripts.run_task --qid Q001` 的四步 trace；`data/tasks.db` 可回放 |
-| M4 | [Dockerfile](Dockerfile) + `docker compose up`；日志是单行 JSON（trace_id 可串全链路） |
-| M5 | 待建（计划：20 条回归任务 + GitHub Actions） |
-| M6 | 待建（计划：3 分钟 demo + 10 分钟讲稿 + 3 个失败案例） |
+| 客观维度一致性（3 个维度，代码计算） | kappa **1.000**（设计使然，可作流程自检） |
+| 语义维度 judge↔judge | kappa **0.485 ± 0.05** |
+| 语义维度 judge↔人工 | kappa **0.300**（51 条盲标） |
+| 位置偏差（5 条顺序反转） | DeepSeek **2.0%** ／ Qwen **12.0%** |
+| 单条评测成本 | **¥0.009**（一次生成 + 两次判定） |
 
-## 数据与日志的位置
+**核心结论：judge 可以粗筛，不能判不合格。** 它比人宽 25 次、比人严 0 次——
+人判 2 分的 8 条它全对，人判 0/1 分的它经常给高分。
 
-| 运行方式 | 任务数据库 | 日志 |
-|---|---|---|
-| 本地 | `data/tasks.db` | 终端 stderr（一行 JSON） |
-| Docker | `data/tasks-container.db`（compose 里用 `TASKS_DB` 指定） | `docker compose logs` |
+完整报告与失败分析见 [eval/REPORT.md](eval/REPORT.md)。
 
-两者独立，互不污染。想改路径就设环境变量：
+## 设计取舍
 
-```bash
-TASKS_DB=/tmp/my.db python -m scripts.run_task --qid Q001
-```
+| 决定 | 理由 |
+|---|---|
+| 能代码算的维度不交给模型 | 日期差、类目命中、类型数都是确定性计算，交给 LLM 只会引入方差 |
+| 用候选池代替自由生成 | 否则模型编的 `published_at` 会让时效性维度失效——测到的成了「编日期的水平」 |
+| 模型只输出 `{id, reason}` | 标题/类目/日期由代码从池子里填，输出里四个字段有三个不可能出错 |
+| 注入 30 条降级样本做人工标注 | 原始推荐几乎条条合格，不注入坏样本，可解释性维度没有区分度 |
 
-## 开发
+## 已知局限
 
-```bash
-.venv/bin/python -m pytest            # 81 个离线单测，覆盖率低于 60% 会失败
-.venv/bin/python -m scripts.check_m0  # 结构层验收（24 项，不花钱）
-```
+- **数据是合成的**：候选池 80 条内容由人写，不是真实内容平台的数据，分布偏理想
+- **judge 单向偏宽**（见上）：kappa 0.300 低于 0.4 的常用门槛
+- **judge 有随机性**：同一判定标准重跑两次，kappa 差 0.045，所以报告写成「约 0.49 ± 0.05」
+- **位置敏感度因模型而异**：Qwen 12% 的样本会因顺序改变而改判，用 Qwen 当裁判需固定顺序
 
-约定：
+## 里程碑
 
-- 配置只进 `app/config.py`，prompt 只进 `app/prompts.py`
-- 单测必须离线可跑（不联网、不需要 key），否则 CI 不稳定
-- commit 前缀：`feat(scope):` / `fix(scope):` / `docs(scope):` / `test(scope):`
-- **发现问题必须存档**：代码/文档缺陷进 [docs/bugs.md](docs/bugs.md)，环境/网络/工具链进 [troubleshooting.md](docs/troubleshooting.md)。五要素（现象/发现/根因/修复/防复发）缺一不可，且与修复放在同一个 commit 里。规则详见 [docs/README.md](docs/README.md)
+- [x] **M0** 环境与数据：跑通一次 LLM 调用
+- [x] **M1** 评测集：4 维度 rubric + 200 条 query + 200 组检查点
+- [x] **M2** 双 judge：kappa / 位置偏差 / 成本三个数字
+- [x] **M3** Agent 骨架：规划 → 工具 → 产出循环
+- [x] **M4** 工程化：结构化日志 + 超时重试 + Docker + 85% 覆盖率
+- [ ] **M5** CI 回归门禁：改坏 prompt 能被 CI 拦住
+- [ ] **M6** 材料：demo 视频 + 10 分钟讲稿 + 失败案例
 
-踩坑记录（都是真实踩过的，附诊断命令）：
+每个里程碑的目标、产出、验收标准与证据位置，见 [docs/milestones.md](docs/milestones.md)。
 
-- [docs/troubleshooting.md](docs/troubleshooting.md) — 环境 / 网络 / 解释器：443 概率性阻断、SSH 口令未加载、GitHub 停用密码认证、pandas 架构不匹配
-- [docs/bugs.md](docs/bugs.md) — M0 阶段 8 个代码缺陷，含「显示正常但统计不对」这类隐蔽问题的定位过程
+## 文档
 
-## 目录结构
-
-<details>
-<summary>展开查看</summary>
-
-```
-rec-quality-agent/
-├── app/                      应用代码
-│   ├── config.py             配置：路径、provider、超时、条数
-│   ├── prompts.py            prompt 模板
-│   ├── llm.py                provider 工厂 + 成本估算
-│   ├── recs.py               generate_recs() 业务逻辑
-│   ├── agent.py              M3：规划-工具-产出循环
-│   ├── main.py               M3：FastAPI 入口
-│   ├── store.py              M3：SQLite 任务与轨迹
-│   ├── logging.py            M4：结构化日志（一行 JSON，trace_id 自动注入）
-│   ├── resilience.py         M4：分级超时 / 重试 / 降级
-│   └── tools/                M3：metrics.py / sql_query.py
-├── scripts/
-│   ├── smoke_recs.py         最小链路验证：生成 5 条推荐
-│   ├── run_task.py           跑一次 Agent 任务并打印 trace
-│   ├── inspect_db.py         查看任务库与轨迹
-│   ├── gen_queries.py        生成 200 条评测 query（固定种子可复现）
-│   ├── gen_checklists.py     生成 200 组理想答案要点
-│   └── check_m0.py           M0 验收：24 项结构检查
-├── tests/                    81 个离线单测（不联网、不需要 key）
-├── data/                     queries.csv / labels.csv（M1/M2 填充）
-├── eval/                     rubric.md / judge.py / agreement.py / REPORT.md
-├── docs/                     troubleshooting / bugs / rubric-review / sql-queries
-├── .github/workflows/        M5：CI 回归门禁
-├── pytest.ini                测试路径与导入路径
-└── requirements.txt
-```
-
-</details>
+| 文档 | 内容 |
+|---|---|
+| [docs/milestones.md](docs/milestones.md) | M0–M6 的目标、产出、验收标准与证据 |
+| [eval/rubric.md](eval/rubric.md) | 评分标准：4 个维度、锚点、反例、聚合规则 |
+| [eval/REPORT.md](eval/REPORT.md) | 评测报告：kappa、位置偏差、成本、结论与局限 |
+| [docs/rubric-review.md](docs/rubric-review.md) | 评分标准设计过程中的 17 个问题与 6 类根因 |
+| [docs/bugs.md](docs/bugs.md) | 17 个代码/文档缺陷的定位与修复过程 |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | 环境、网络、解释器的坑（443 阻断、SSH、Rosetta） |
+| [docs/sql-queries.md](docs/sql-queries.md) | 任务库的常用 SQL（含用 `json_each` 统计工具耗时） |
 
 ## License
 

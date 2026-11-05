@@ -5,6 +5,8 @@
 | [troubleshooting.md](troubleshooting.md) | 环境、网络、工具链的坑 | 每次都可能是新的，配一次就好 |
 | [bugs.md](bugs.md) | 自己写的代码 / 文档的缺陷 | 修复的同一个 commit 里 |
 | [rubric-review.md](rubric-review.md) | 评分标准的设计缺陷与评审记录 | 每次改 rubric 时追加 |
+| [milestones.md](milestones.md) | M0–M6 的目标、产出、验收标准与证据 | 里程碑状态变化时 |
+| [sql-queries.md](sql-queries.md) | 任务库的常用 SQL | 新增查询时 |
 
 ## 规则：发现问题必须存档
 
