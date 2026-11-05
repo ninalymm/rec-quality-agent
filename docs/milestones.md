@@ -11,7 +11,7 @@
 | **M1** 评测集 | 200 条 query + 评分标准 | `queries.csv`、`rubric.md`、`checklists.jsonl` | 陌生人能照 rubric 打分（已做 51 条人工试标） | ✅ |
 | **M2** 双 judge | 三个数字：kappa / 位置偏差 / 成本 | `judge.py`、`agreement.py`、`REPORT.md` | 三个数字都有，且能解释怎么算的 | ✅ |
 | **M3** Agent 骨架 | 规划 → 工具 → 产出循环 | `agent.py`、`main.py`、`store.py` | `curl` 能拿到结果，trace 能看到每步输入输出与耗时 | ✅ |
-| **M4** 工程化 | 别人 10 分钟能跑起来 | 结构化日志、超时重试降级、Docker、81 个测试 | 新环境照 README 跑通一次 | ✅ |
+| **M4** 工程化 | 别人 10 分钟能跑起来 | 结构化日志、超时重试降级、Docker、83 个测试 | 新环境照 README 跑通一次（已由第二方复现） | ✅ |
 | **M5** CI 门禁 | 改坏 prompt 能被 CI 拦住 | `.github/workflows/eval.yml`、20 条回归集 | CI 上有一次真实的红→绿记录 | 🚧 |
 | **M6** 材料 | 能对着人讲 10 分钟 | demo 视频、讲稿、3 个失败案例 | 讲完不卡壳 | ⬜ |
 
@@ -23,7 +23,7 @@
 | M1 | [data/queries.csv](../data/queries.csv) 200 条 ｜ [eval/rubric.md](../eval/rubric.md) 4 维度 ｜ [data/checklists.jsonl](../data/checklists.jsonl) 200 组 |
 | M2 | [eval/REPORT.md](../eval/REPORT.md)：judge↔judge kappa 0.485、judge↔人工 0.300、位置偏差 2%/12%、单条 ¥0.009 |
 | M3 | `python -m scripts.run_task --qid Q001` 的四步 trace；`data/tasks.db` 可回放 |
-| M4 | [Dockerfile](../Dockerfile) + `docker compose up`；日志是单行 JSON，`trace_id` 可串全链路 |
+| M4 | [Dockerfile](../Dockerfile) + `docker compose up`；日志单行 JSON，`trace_id` 可串全链路 ｜ **2026-11-05 在 `/tmp` 全新环境由作者本人复现通过**（非开发环境），过程中发现 6 个缺陷 + 2 处改进 |
 | M5 | 待建（计划：20 条回归任务 + GitHub Actions，成功率低于基线 5% 则 fail） |
 | M6 | 待建（计划：3 分钟 demo + 10 分钟讲稿 + 3 个失败案例） |
 
