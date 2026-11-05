@@ -70,7 +70,7 @@ curl localhost:8000/task/1        # 按 task_id 回放完整 trace
 # 4. 只验证生成链路（不评测，适合排查配置）
 .venv/bin/python -m scripts.smoke_recs
 
-# 5. 测试（全部离线，不需要 key）
+# 5. 测试（全部离线，不需要 key；覆盖率门槛在 CI 里卡，本地只显示）
 .venv/bin/python -m pytest
 ```
 
