@@ -12,7 +12,7 @@ import time
 
 from app import candidates, config
 from app.llm import client_for, cost_cny
-from app.logging import get_logger, log_step, log_task, new_trace_id
+from app.logging import get_logger, log_step, log_task, trace_context
 from app.recs import generate_recs
 from app.resilience import run_tool
 from eval import judge as judge_mod
@@ -140,9 +140,15 @@ def dispatch(name, state, args, timeouts=None):
 
 
 def run_task(qid, provider=None, max_steps=6, model=None):
-    """跑一次任务，返回 result + trace + 成本。"""
+    """跑一次任务。trace_id 在该作用域内自动注入所有日志。"""
+    with trace_context() as trace_id:
+        out = _run_task(qid, provider, max_steps, model)
+        out["trace_id"] = trace_id
+        return out
+
+
+def _run_task(qid, provider=None, max_steps=6, model=None):
     client, cfg = client_for(provider, model)
-    trace_id = new_trace_id()
     state = TaskState(qid)
     trace = []
     messages = [{"role": "system", "content": SYSTEM},
@@ -175,7 +181,7 @@ def run_task(qid, provider=None, max_steps=6, model=None):
             res = dispatch(name, state, args)
             payload = res.get("data") if res["ok"] else {"error": res["error"], "hint": res.get("hint")}
             latency = int((time.time() - t0) * 1000)
-            log_step(log, trace_id, step, name, args, payload, latency,
+            log_step(log, step, name, args, payload, latency,
                      ok=res["ok"], error=None if res["ok"] else res["error"])
             trace.append({"step": step, "tool": name, "args": args, "ok": res["ok"],
                           "error": None if res["ok"] else res["error"],
@@ -191,10 +197,9 @@ def run_task(qid, provider=None, max_steps=6, model=None):
     errors = [t["error"] for t in trace if not t["ok"]]
     status = "done" if state.judgement and not errors else ("partial" if state.recs else "failed")
     error_reason = errors[0] if errors else None
-    log_task(log, trace_id, qid, status, len(trace), round(total_cost, 6), error_reason)
+    log_task(log, qid, status, len(trace), round(total_cost, 6), error_reason)
 
     return {"qid": qid, "result": answer, "trace": trace,
             "steps": len(trace), "cost_cny": round(total_cost, 6),
             "tool_errors": len(errors), "status": status, "error_reason": error_reason,
-            "trace_id": trace_id,
             "recs": state.recs, "judgement": state.judgement}

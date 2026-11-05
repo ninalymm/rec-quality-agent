@@ -3,7 +3,8 @@ import io
 import json
 import logging
 
-from app.logging import JsonFormatter, log_step, log_task, new_trace_id
+from app.logging import (JsonFormatter, current_trace_id, log_step, log_task,
+                         new_trace_id, trace_context)
 
 
 def _capture():
@@ -20,7 +21,8 @@ def _capture():
 
 def test_step_log_is_one_json_line():
     logger, stream = _capture()
-    log_step(logger, "abc123", 1, "generate_recs", {"qid": "Q001"}, {"count": 5}, 1200)
+    with trace_context("abc123"):
+        log_step(logger, 1, "generate_recs", {"qid": "Q001"}, {"count": 5}, 1200)
     lines = [l for l in stream.getvalue().splitlines() if l.strip()]
     assert len(lines) == 1
     rec = json.loads(lines[0])
@@ -29,11 +31,13 @@ def test_step_log_is_one_json_line():
         assert key in rec, "缺少字段 %s" % key
     assert rec["event"] == "tool_step"
     assert rec["tool"] == "generate_recs"
+    assert rec["trace_id"] == "abc123"        # 由上下文自动注入
 
 
 def test_task_log_contains_status():
     logger, stream = _capture()
-    log_task(logger, "abc123", "Q001", "done", 4, 0.006)
+    with trace_context("abc123"):
+        log_task(logger, "Q001", "done", 4, 0.006)
     rec = json.loads(stream.getvalue().strip())
     assert rec["event"] == "task_done"
     assert rec["status"] == "done"
@@ -42,3 +46,25 @@ def test_task_log_contains_status():
 def test_trace_id_is_short_and_unique():
     a, b = new_trace_id(), new_trace_id()
     assert len(a) == 12 and a != b
+
+
+def test_no_trace_id_outside_context():
+    """上下文之外不该凭空造一个 trace_id。"""
+    logger, stream = _capture()
+    log_step(logger, 1, "metrics_calc", {}, {}, 10)
+    rec = json.loads(stream.getvalue().strip())
+    assert "trace_id" not in rec
+
+
+def test_context_is_restored_after_exit():
+    assert current_trace_id() is None
+    with trace_context() as tid:
+        assert current_trace_id() == tid
+    assert current_trace_id() is None
+
+
+def test_nested_context_restores_outer():
+    with trace_context("outer"):
+        with trace_context("inner"):
+            assert current_trace_id() == "inner"
+        assert current_trace_id() == "outer"
